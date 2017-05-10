@@ -39,10 +39,15 @@ namespace GLSLRayTracer
             computeHandle = GL.CreateProgram();
 
             int computeShader;
+            int fragmentShader;
+            int vertexShader;
+
 
             computeHandle = GL.CreateProgram();
 
             LoadShader("../../shaders/computeRT.glsl", ShaderType.ComputeShader, computeHandle, out computeShader);
+            LoadShader("../../shaders/fs.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
+            LoadShader("../../shaders/vs.glsl", ShaderType.VertexShader, computeHandle, out vertexShader);
 
             GL.LinkProgram(computeHandle);
 
