@@ -28,6 +28,12 @@ namespace GLSLRayTracer
         {
             base.OnLoad(e);
 
+            GL.Viewport(0, 0, width, height);
+
+            Matrix4 projection = Matrix4.CreatePerspectiveFieldOfView((float)Math.PI / 4, Width / (float)Height, 1.0f, 64.0f);
+            GL.MatrixMode(MatrixMode.Projection);
+            GL.LoadMatrix(ref projection);
+
             int texHandle = GL.GenTexture();
 
             computeHandle = GL.CreateProgram();
