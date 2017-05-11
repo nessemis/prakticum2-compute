@@ -140,7 +140,7 @@ vec4 getRayColor(ray ray){
 
 	if (ray.distance < 0)
 	{
-		return vec4(1.0, 0.0, 0.0, 1.0);
+		return vec4(0.0, 0.0, 1.0, 1.0);
 	};
 
 	return vec4(1.0 / ray.distance / ray.distance, 1.0 / ray.distance / ray.distance, 1.0 / ray.distance / ray.distance, 1.0);

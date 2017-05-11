@@ -36,6 +36,17 @@ namespace GLSLRayTracer
 
             GL.Viewport(0, 0, width, height);
 
+            ReloadShader();
+
+          
+
+
+
+            cam = new Camera(computeHandle);
+        }
+
+        private void ReloadShader()
+        {
             int fragmentShader;
             int vertexShader;
 
@@ -45,18 +56,15 @@ namespace GLSLRayTracer
             LoadShader("../../shaders/fs.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
 
             GL.LinkProgram(computeHandle);
+            GL.UseProgram(computeHandle);
 
             vPos = GL.GetAttribLocation(computeHandle, "vPosition");
 
             BufferQuad();
 
-            GL.UseProgram(computeHandle);
-
             InitUniform();
-
             WriteWindowCoord();
 
-            cam = new Camera(computeHandle);
         }
 
         private void InitUniform()
@@ -96,6 +104,10 @@ namespace GLSLRayTracer
 
             if (Keyboard[Key.Escape])
                 Exit();
+            if (Keyboard[Key.F])
+            {
+                ReloadShader();
+            }
         }
 
         protected override void OnRenderFrame(FrameEventArgs e)
