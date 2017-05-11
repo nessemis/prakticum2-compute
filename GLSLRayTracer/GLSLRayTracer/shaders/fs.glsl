@@ -60,16 +60,12 @@ struct plane{
 };
 
 float intersectPlane(ray ray, const plane plane, out vec3 normal){
+	//we first have to pick the normal such that the ray origin to the normal posi
+
 	float rayOriginDistanceToPlane = dot(-ray.origin, plane.normal) + plane.distance;
 	float distance = rayOriginDistanceToPlane/dot(plane.normal, ray.direction);
-			
-	if (dot(plane.normal, ray.direction) > 0)
-		normal = plane.normal;
-
-	else 
-		normal = plane.normal;
-		
-	normal = plane.normal;
+					
+	normal = -plane.normal;
 	return distance;
 };
 
@@ -134,7 +130,7 @@ void intersectWithScene(inout ray ray, out vec3 normal, out vec4 reflectedMateri
 	intersectWithPlanes(ray, reflectedMaterial, normal);
 };
 
-vec3 launchShadowRays(vec3 origin, vec3 incomingDirection){
+vec3 launchShadowRays(vec3 origin, vec3 incomingDirection, vec3 surfaceNormal){
 	vec3 calculatedColor = vec3(0, 0, 0);
 	
 	//use these dummies because the additional values are not needed.
@@ -142,23 +138,19 @@ vec3 launchShadowRays(vec3 origin, vec3 incomingDirection){
 	vec4 reflectedMaterialDummy;
 	
 	for (int i = 0; i < NUM_LIGHTS; i++){
-	
 		vec3 originToLight = lights[i].location - origin;
 		float distanceToLight = sqrt(dot(originToLight, originToLight));
 		originToLight /= distanceToLight;
-	
-		float angle = dot(incomingDirection, originToLight);
-		if (angle < 0){
-			break;
-		}
-	
+		
 		ray shadowRay = ray(origin, originToLight, -1.0, distanceToLight);
 		intersectWithScene(shadowRay, normalDummy, reflectedMaterialDummy);
-		if (shadowRay.distance == -1.0 || shadowRay.distance < distanceToLight){
+		
+		float angle = dot(originToLight, surfaceNormal);
+		if (shadowRay.distance < 0.0 || shadowRay.distance < distanceToLight){
 			calculatedColor += lights[i].color * updateIntensity(angle, distanceToLight);
 		}
 	}
-	return calculatedColor;
+	return calculatedColor * dot(-incomingDirection, surfaceNormal);
 };
 
 vec3 intersectWithSceneIterator(ray inputRay)
@@ -187,7 +179,7 @@ vec3 intersectWithSceneIterator(ray inputRay)
 		
 		if(reflectedMaterial.w < 1)
 		{
-			vec3 shadowColor = launchShadowRays(currentRay.origin + currentRay.direction * currentRay.distance, currentRay.direction);
+			vec3 shadowColor = launchShadowRays(currentRay.origin + currentRay.direction * currentRay.distance, currentRay.direction, normal);
 			inputRayColor += (1 - reflectedMaterial.w) * shadowColor * intensity;
 		};
 		
