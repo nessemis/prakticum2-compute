@@ -243,21 +243,6 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
-practicum1/.vs/template/v15/.suo
-practicum1/.vs/template/v14/.suo
-practicum1/.vs/template/v14/.suo
-GLSLRayTracer/GLSLRayTracer/bin/Debug/GLSLRayTracer.exe
-GLSLRayTracer/GLSLRayTracer/obj/Debug/CoreCompileInputs.cache
-GLSLRayTracer/GLSLRayTracer/obj/Debug/GLSLRayTracer.csprojResolveAssemblyReference.cache
-GLSLRayTracer/GLSLRayTracer/bin/Debug/GLSLRayTracer.exe
-GLSLRayTracer/GLSLRayTracer/obj/Debug/GLSLRayTracer.pdb
-GLSLRayTracer/GLSLRayTracer/obj/Debug/CoreCompileInputs.cache
-GLSLRayTracer/GLSLRayTracer/bin/Debug/GLSLRayTracer.exe
-GLSLRayTracer/GLSLRayTracer/bin/Debug/GLSLRayTracer.pdb
-GLSLRayTracer/.vs/GLSLRayTracer/v15/.suo
-GLSLRayTracer/GLSLRayTracer/bin/Debug/GLSLRayTracer.exe
-GLSLRayTracer/GLSLRayTracer/obj/Debug/GLSLRayTracer.csprojResolveAssemblyReference.cache
-GLSLRayTracer/GLSLRayTracer/bin/Debug/GLSLRayTracer.exe
-GLSLRayTracer/GLSLRayTracer/bin/Debug/GLSLRayTracer.pdb
-GLSLRayTracer/GLSLRayTracer/obj/Debug/GLSLRayTracer.csproj.FileListAbsolute.txt
-GLSLRayTracer/GLSLRayTracer/obj/Debug/GLSLRayTracer.exe
+GLSLRayTracer/GLSLRayTracer/.vs/template/v15/.suo
+GLSLRayTracer/GLSLRayTracer/.vs/template/v14/.suo
+GLSLRayTracer/GLSLRayTracer/.vs/template/v14/.suo
