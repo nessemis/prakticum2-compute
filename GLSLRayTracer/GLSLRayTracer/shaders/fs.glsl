@@ -16,7 +16,7 @@ uniform vec3 dBotLeft;
 uniform vec3 dRight;
 uniform vec3 dUp;
 
-const float epsilon = 0.05f;
+const float epsilon = 0.0005f;
 
 //-------------------------------------------------------
 //Primitives.
@@ -81,7 +81,7 @@ const sphere spheres[] = {
 
 #define NUM_PLANES 3
 const plane planes[] = {
-	{vec3(0, 0, -1), 1.0, vec4(1, 0, 0, 0.0)},
+	{vec3(0, 0, -1), 1.0, vec4(1, 0, 0, 0.5)},
 	{vec3(0, -1, 0), 4.0, vec4(0, 1, 0, 0.0)},
 	{vec3(0, 1, 0), 4.0, vec4 (0, 0, 1, 0.0)}
 };
@@ -166,7 +166,7 @@ vec3 intersectWithSceneIterator(ray inputRay)
 	
 	ray currentRay = inputRay;
 	
-	for(int i = 0; i < 1; i++)
+	for(int i = 0; i < 2; i++)
 	{
 		intersectWithScene(currentRay, normal, reflectedMaterial);
 		
