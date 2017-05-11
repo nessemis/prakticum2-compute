@@ -13,7 +13,7 @@ uniform vec3 dBotLeft;
 uniform vec3 dRight;
 uniform vec3 dUp;
 
-const float epsilon = 0.01f;
+const float epsilon = 0.05f;
 
 //-------------------------------------------------------
 //Primitives.
