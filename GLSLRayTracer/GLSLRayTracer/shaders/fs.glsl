@@ -180,7 +180,7 @@ vec3 intersectWithSceneIterator(ray inputRay)
 		if(reflectedMaterial.w < 1)
 		{
 			vec3 shadowColor = launchShadowRays(currentRay.origin + currentRay.direction * currentRay.distance, currentRay.direction, normal);
-			inputRayColor += (1 - reflectedMaterial.w) * shadowColor * intensity;
+			inputRayColor += (1 - reflectedMaterial.w) * shadowColor * intensity * vec3(reflectedMaterial.x, reflectedMaterial.y, reflectedMaterial.z);
 		};
 		
 		if(reflectedMaterial.w == 0.0){
