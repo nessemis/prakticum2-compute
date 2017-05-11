@@ -189,7 +189,8 @@ vec3 intersectWithSceneIterator(ray inputRay)
 			break;
 		}
 		currentRay = ray(intersectionLocation, currentRay.direction - 2 * dot(currentRay.direction, normal) * normal, -1.0, -1.0);
-		updateIntensity(intensity, currentRay.distance);
+		intensity *= reflectedMaterial.w;
+		updateIntensity(intensity , currentRay.distance);
 	}
 	
 	return inputRayColor;
