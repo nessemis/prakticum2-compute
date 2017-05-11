@@ -75,8 +75,8 @@ float intersectPlane(ray ray, const plane plane, out vec3 normal){
 
 #define NUM_SPHERES 2
 const sphere spheres[] = {
-	{vec3(4, 0, 0), 1.0, vec4(1, 0, 0, 0.0)},
-	{vec3(4, 1, 0), 1.0, vec4(0, 1, 0, 0.0)}
+	{vec3(4, -1.5, 0), 1.0, vec4(1, 0, 0, 1.0)},
+	{vec3(4, 1.5, 0), 1.0, vec4(0, 1, 0, 1.0)}
 };
 
 #define NUM_PLANES 3
@@ -98,7 +98,7 @@ void intersectWithSpheres (inout ray ray, out vec4 material, out vec3 normal){
 		if (sphereDistance > epsilon && (sphereDistance < ray.distance || ray.distance < 0)){
 			ray.distance = sphereDistance;
 			normal = tmpNormal;
-			material = planes[i].color;
+			material = spheres[i].color;
 		};
 	};
 };
@@ -146,6 +146,8 @@ vec3 launchShadowRays(vec3 origin, vec3 incomingDirection, vec3 surfaceNormal){
 		intersectWithScene(shadowRay, normalDummy, reflectedMaterialDummy);
 		
 		float angle = dot(originToLight, surfaceNormal);
+		if (angle < 0)
+			angle = 0;
 		if (shadowRay.distance < 0.0 || shadowRay.distance > distanceToLight){
 			calculatedColor += lights[i].color * updateIntensity(angle, distanceToLight);
 		}
@@ -166,7 +168,7 @@ vec3 intersectWithSceneIterator(ray inputRay)
 	
 	ray currentRay = inputRay;
 	
-	for(int i = 0; i < 2; i++)
+	while(intensity > 0.01)
 	{
 		intersectWithScene(currentRay, normal, reflectedMaterial);
 		
