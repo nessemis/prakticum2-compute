@@ -1,8 +1,0 @@
-C:\Users\Dennis Arets\OneDrive - Universiteit Utrecht\Courses\graphics\prakticum2 -glsl\GLSLRayTracer\GLSLRayTracer\bin\Debug\GLSLRayTracer.exe.config
-C:\Users\Dennis Arets\OneDrive - Universiteit Utrecht\Courses\graphics\prakticum2 -glsl\GLSLRayTracer\GLSLRayTracer\bin\Debug\GLSLRayTracer.exe
-C:\Users\Dennis Arets\OneDrive - Universiteit Utrecht\Courses\graphics\prakticum2 -glsl\GLSLRayTracer\GLSLRayTracer\bin\Debug\GLSLRayTracer.pdb
-C:\Users\Dennis Arets\OneDrive - Universiteit Utrecht\Courses\graphics\prakticum2 -glsl\GLSLRayTracer\GLSLRayTracer\bin\Debug\OpenTK.dll
-C:\Users\Dennis Arets\OneDrive - Universiteit Utrecht\Courses\graphics\prakticum2 -glsl\GLSLRayTracer\GLSLRayTracer\bin\Debug\OpenTK.xml
-C:\Users\Dennis Arets\OneDrive - Universiteit Utrecht\Courses\graphics\prakticum2 -glsl\GLSLRayTracer\GLSLRayTracer\obj\Debug\GLSLRayTracer.exe
-C:\Users\Dennis Arets\OneDrive - Universiteit Utrecht\Courses\graphics\prakticum2 -glsl\GLSLRayTracer\GLSLRayTracer\obj\Debug\GLSLRayTracer.pdb
-C:\Users\Dennis Arets\OneDrive - Universiteit Utrecht\Courses\graphics\prakticum2 -glsl\GLSLRayTracer\GLSLRayTracer\obj\Debug\GLSLRayTracer.csprojResolveAssemblyReference.cache
