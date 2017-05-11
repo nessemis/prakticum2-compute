@@ -79,25 +79,28 @@ float intersectPlane(ray ray, const plane plane, out vec3 normal){
 
 #define NUM_SPHERES 2
 const sphere spheres[] = {
-	{vec3(4, 0, 0), 1.0, vec4(1, 0, 0, 0.0)},
-	{vec3(4, 1, 0), 1.0, vec4(0, 1, 0, 0.0)}
+	{vec3(4, 0, 0), 1.0, vec4(1, 0, 0, 1)},
+	{vec3(4, 1, 0), 1.0, vec4(0, 1, 0, 1)}
 };
 
 #define NUM_PLANES 3
 const plane planes[] = {
-	{vec3(0, 0, -1), 1.0, vec4(1, 0, 0, 0.0)},
-	{vec3(0, -1, 0), 4.0, vec4(0, 1, 0, 0.0)},
-	{vec3(0, 1, 0), 4.0, vec4 (0, 0, 1, 0.0)}
+	{vec3(0, 0, -1), 1.0, vec4(1, 0, 0, 1)},
+	{vec3(0, -1, 0), 4.0, vec4(0, 1, 0, 1)},
+	{vec3(0, 1, 0), 4.0, vec4 (0, 0, 1, 1)}
 };
 
 #define NUM_LIGHTS 1
 const light lights[] = {
-	{vec3(0, 0, 50), vec3(10000, 10000, 10000)}
+	{vec3(0, 0, 100), vec3(100, 100, 0)}
 };
 
-void intersectWithSpheres (inout ray ray, out vec4 material, out vec3 normal){
+void intersectWithSpheres (inout ray ray, out vec4 material, out vec3 normal){	
 	vec3 tmpNormal;
-	for (int i = 0; i < NUM_SPHERES && (ray.shadowRay < epsilon || ray.distance > ray.shadowRay); i++) {
+	for (int i = 0; i < NUM_SPHERES; i++) {
+		if(ray.shadowRay > epsilon && ray.distance < ray.shadowRay)
+			return;
+	
 		float sphereDistance = intersectSphere(ray, spheres[i], tmpNormal);
 		if (sphereDistance > 0 && (sphereDistance < ray.distance || ray.distance < 0)){
 			ray.distance = sphereDistance;
@@ -109,7 +112,10 @@ void intersectWithSpheres (inout ray ray, out vec4 material, out vec3 normal){
 
 void intersectWithPlanes (inout ray ray, out vec4 material, out vec3 normal){
 	vec3 tmpNormal;
-	for (int i = 0; i < NUM_PLANES && (ray.shadowRay < epsilon || ray.distance > ray.shadowRay); i++) {
+	for (int i = 0; i < NUM_PLANES; i++) {
+		if(ray.shadowRay > epsilon && ray.distance < ray.shadowRay)
+			return;
+			
 		float planeDistance = intersectPlane(ray, planes[i], tmpNormal);
 		if (planeDistance > 0 && (planeDistance < ray.distance || ray.distance < 0)){
 			ray.distance = planeDistance;
@@ -174,12 +180,12 @@ vec3 intersectWithSceneIterator(ray inputRay)
 	
 	ray currentRay = inputRay;
 	
-	for(int i = 0; i < 1; i++)
+	while(intensity > 0.1)
 	{
 		intersectWithScene(currentRay, normal, reflectedMaterial);
 		
 		//if the distance to intersection is too large, pretent it doesn't intersect.
-		if(currentRay.distance < 0){
+		if(currentRay.distance == -1){
 			break;
 		}
 		
@@ -191,7 +197,7 @@ vec3 intersectWithSceneIterator(ray inputRay)
 			inputRayColor += (1 - reflectedMaterial.w) * shadowColor * intensity;
 		};
 		
-		if(reflectedMaterial.w == 0.0){
+		if(reflectedMaterial.w == 0){
 			break;
 		}
 		currentRay = ray(intersectionLocation, currentRay.direction - 2 * dot(currentRay.direction, normal) * normal, -1.0, -1.0);
@@ -209,7 +215,7 @@ vec4 getRayColor(ray ray)
 {
 	vec3 color = intersectWithSceneIterator(ray);
 
-	return vec4(color.x, color.y, color.z, 1.0);
+	return vec4(color, 1.0);
 };
 
 //when the shader program works, try to remove the vec2 to ivec2 conversion.
