@@ -14,9 +14,15 @@ namespace GLSLRayTracer
         const int width = 800;
         const int height = 600;
 
-        int renderHandle;
         int computeHandle;
 
+        int QuadVBO;
+
+        int vPos;
+
+        int uniform_windowSize;
+
+        Camera cam;
 
         //We leave the framerate unlocked.
         public Window() : base (width, height, GraphicsMode.Default, "RayTracer")
@@ -30,44 +36,63 @@ namespace GLSLRayTracer
 
             GL.Viewport(0, 0, width, height);
 
-            Matrix4 projection = Matrix4.CreatePerspectiveFieldOfView((float)Math.PI / 4, Width / (float)Height, 1.0f, 64.0f);
-            GL.MatrixMode(MatrixMode.Projection);
-            GL.LoadMatrix(ref projection);
-
-            int texHandle = GL.GenTexture();
-
-            computeHandle = GL.CreateProgram();
-
-            int computeShader;
             int fragmentShader;
             int vertexShader;
 
-
             computeHandle = GL.CreateProgram();
 
-            LoadShader("../../shaders/computeRT.glsl", ShaderType.ComputeShader, computeHandle, out computeShader);
-            LoadShader("../../shaders/fs.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
             LoadShader("../../shaders/vs.glsl", ShaderType.VertexShader, computeHandle, out vertexShader);
+            LoadShader("../../shaders/fs.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
 
             GL.LinkProgram(computeHandle);
 
-            ErrorCode error1 = GL.GetError();
+            vPos = GL.GetAttribLocation(computeHandle, "vPosition");
 
-            int framebuffer = GL.GetAttribLocation(computeShader, "framebuffer");
+            BufferQuad();
 
-            ErrorCode error = GL.GetError();
+            GL.UseProgram(computeHandle);
 
-            return;
+            InitUniform();
+
+            WriteWindowCoord();
+
+            cam = new Camera(computeHandle);
         }
 
-        private void InitGL()
+        private void InitUniform()
         {
+            uniform_windowSize = GL.GetUniformLocation(computeHandle, "windowSize");
+        }
+
+        private void WriteWindowCoord()
+        {
+            GL.Uniform2(uniform_windowSize, (float) width, (float) height);
+        }
+
+        private void BufferQuad()
+        {
+            float[] quad = new float[3 * 6]
+            {
+                -1f, 1f, 0f,
+                1f, 1f, 0f,
+                1f, -1f, 0f,
+                -1f, 1f, 0f,
+                1f, -1f, 0f,
+                -1f, -1f, 0f
+            };
+
+            QuadVBO = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ArrayBuffer, QuadVBO);
+            GL.BufferData(BufferTarget.ArrayBuffer, 6 * 3 * 4, quad, BufferUsageHint.StaticDraw);
+            GL.VertexAttribPointer(vPos, 3, VertexAttribPointerType.Float, false, 12, 0);
 
         }
 
         protected override void OnUpdateFrame(FrameEventArgs e)
         {
             base.OnUpdateFrame(e);
+
+            cam.Update();
 
             if (Keyboard[Key.Escape])
                 Exit();
@@ -79,17 +104,9 @@ namespace GLSLRayTracer
 
             GL.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
 
-            Matrix4 modelview = Matrix4.LookAt(Vector3.Zero, Vector3.UnitZ, Vector3.UnitY);
-            GL.MatrixMode(MatrixMode.Modelview);
-            GL.LoadMatrix(ref modelview);
+            GL.EnableVertexAttribArray(vPos);
 
-            GL.Begin(PrimitiveType.Triangles);
-
-            GL.Color3(1.0f, 1.0f, 0.0f); GL.Vertex3(-1.0f, -1.0f, 4.0f);
-            GL.Color3(1.0f, 0.0f, 0.0f); GL.Vertex3(1.0f, -1.0f, 4.0f);
-            GL.Color3(0.2f, 0.9f, 1.0f); GL.Vertex3(0.0f, 1.0f, 4.0f);
-
-            GL.End();
+            GL.DrawArrays(PrimitiveType.Triangles, 0, 12);
 
             SwapBuffers();
         }
