@@ -80,7 +80,14 @@ namespace GLSLRayTracer
             {
                 location += new Vector3(0, 0.1f, 0);
             }
-
+            if (keyboard[OpenTK.Input.Key.Q])
+            {
+                location += new Vector3(0, 0.0f, 0.1f);
+            }
+            if (keyboard[OpenTK.Input.Key.E])
+            {
+                location += new Vector3(0, 0.0f, -0.1f);
+            }
             UpdateShader();
         }
     }
