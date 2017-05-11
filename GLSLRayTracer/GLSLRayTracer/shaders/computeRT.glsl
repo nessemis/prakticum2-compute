@@ -4,8 +4,6 @@
 // Shamelessly derived from
 //https://github.com/LWJGL/lwjgl3-wiki/wiki/2.6.1.-Ray-tracing-with-OpenGL-Compute-Shaders-(Part-I)
 
-layout(binding = 0, rgba32f) uniform image2D framebuffer;
-
 // The camera specification
 uniform vec3 location;
 
