@@ -40,6 +40,16 @@ struct sphere{
 	vec4 color;
 };
 
+struct plane{
+	vec3 normal;
+	float distance;
+	vec4 color;
+};
+
+//-------------------------------------------------------
+//Primitive intersections.
+//-------------------------------------------------------
+
 float intersectSphere(ray ray, const sphere sphere, out vec3 normal){
 	vec3 rayOriginToSphere = sphere.location - ray.origin;
 	float adjacent = dot(rayOriginToSphere, ray.direction);
@@ -53,20 +63,21 @@ float intersectSphere(ray ray, const sphere sphere, out vec3 normal){
 	return adjacent;
 };
 
-struct plane{
-	vec3 normal;
-	float distance;
-	vec4 color;
-};
-
 float intersectPlane(ray ray, const plane plane, out vec3 normal){
 	//we first have to pick the normal such that the ray origin to the normal posi
-
 	float rayOriginDistanceToPlane = dot(-ray.origin, plane.normal) + plane.distance;
 	float distance = rayOriginDistanceToPlane/dot(plane.normal, ray.direction);
-					
-	normal = -plane.normal;
+	
+	if (dot(plane.normal, ray.direction) < 0)
+		normal = plane.normal;
+	else
+		normal = -plane.normal;
+	
 	return distance;
+};
+
+void intersectWithTriangle (inout ray ray, out vec4 material, out vec3 normal){
+	
 };
 
 //-------------------------------------------------------
@@ -81,7 +92,7 @@ const sphere spheres[] = {
 
 #define NUM_PLANES 3
 const plane planes[] = {
-	{vec3(0, 0, -1), 1.0, vec4(1, 0, 0, 0.5)},
+	{vec3(0, 0, -1), 1.0, vec4(1, 0, 0, 0.0)},
 	{vec3(0, -1, 0), 4.0, vec4(0, 1, 0, 0.0)},
 	{vec3(0, 1, 0), 4.0, vec4 (0, 0, 1, 0.0)}
 };
@@ -119,7 +130,7 @@ void intersectWithPlanes (inout ray ray, out vec4 material, out vec3 normal){
 //Scene functions.
 //-------------------------------------------------------
 
-float updateIntensity(inout float intensity, float distance){
+float updateIntensity(float intensity, float distance){
 	return intensity / distance / distance;
 };
 
@@ -149,7 +160,7 @@ vec3 launchShadowRays(vec3 origin, vec3 incomingDirection, vec3 surfaceNormal){
 		if (angle < 0)
 			angle = 0;
 		if (shadowRay.distance < 0.0 || shadowRay.distance > distanceToLight){
-			calculatedColor += lights[i].color * updateIntensity(angle, distanceToLight);
+			calculatedColor += lights[i].color * updateIntensity(1.0, distanceToLight);
 		}
 	}
 	return calculatedColor * dot(-incomingDirection, surfaceNormal);
@@ -185,12 +196,12 @@ vec3 intersectWithSceneIterator(ray inputRay)
 			inputRayColor += (1 - reflectedMaterial.w) * shadowColor * intensity * vec3(reflectedMaterial.x, reflectedMaterial.y, reflectedMaterial.z);
 		};
 		
-		if(reflectedMaterial.w == 0.0){
+		if(reflectedMaterial.w < epsilon){
 			break;
 		}
 		currentRay = ray(intersectionLocation, currentRay.direction - 2 * dot(currentRay.direction, normal) * normal, -1.0, -1.0);
 		intensity *= reflectedMaterial.w;
-		updateIntensity(intensity , currentRay.distance);
+		intensity = updateIntensity(intensity , currentRay.distance);
 	}
 	
 	return inputRayColor;
