@@ -1,5 +1,5 @@
 //Fragment Shader
-#version 330
+#version 430
 
 out vec4 outputColor;
 
@@ -136,7 +136,7 @@ vec3 triangleNormal(const triangle triangle, const ray ray){
 }
 
 //-------------------------------------------------------
-//Scene.
+//Scene declarations.
 //-------------------------------------------------------
 
 #define NUM_SPHERES 2
@@ -152,7 +152,7 @@ const plane planes[] = {
 	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.0)}
 };
 
-#define NUM_TRIANGLES 1
+#define NUM_TRIANGLES 0
 const triangle triangles[] = {
 	{vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 0.0)},
 };
@@ -161,6 +161,10 @@ const triangle triangles[] = {
 const light lights[] = {
 	{vec3(0, 0, 50), vec3(10000000, 10000000, 10000000)},
 };
+
+//-------------------------------------------------------
+//Scene intersections.
+//-------------------------------------------------------
 
 void intersectWithSpheres (inout ray ray, out float distance, out material material, out vec3 normal){
 	for (int i = 0; i < NUM_SPHERES && (distance < 0 || ray.shadowRay < 0 || distance > ray.shadowRay); i++) {
@@ -196,12 +200,57 @@ void intersectWithTriangles (inout ray ray, out float distance, out material mat
 };
 
 //-------------------------------------------------------
-//Scene functions.
+//Utility functions.
 //-------------------------------------------------------
 
 void updateIntensity(inout ray ray, float distance){
 	ray.intensity /= distance * distance;
 };
+
+int mostSignificantRay(const ray rayBuffer[32], int bufferLog){
+	int index = findLSB(bufferLog);
+	if (index == -1)
+		return -1;
+	index -= 2 << index;
+	int i;
+	
+	while(true){
+		i = findLSB(bufferLog);
+		if (i == -1)
+			break;
+			
+		bufferLog ^= 2 << i;
+		if (rayBuffer[index].intensity < rayBuffer[i].intensity)
+			index = i;
+		
+	}
+	return index;
+}
+
+int leastSignificantRay(const ray rayBuffer[32], int bufferLog){
+	int index = findLSB(bufferLog);
+	if (index == -1)
+		return -1;
+		
+	index ^= 2 << index;
+	int i;
+	
+	while(true){
+		i = findLSB(bufferLog);
+		if (i == -1)
+			break;
+			
+		bufferLog ^= 2 << i;
+		if (rayBuffer[index].intensity > rayBuffer[i].intensity)
+			index = i;
+		
+	}
+	return index;
+}
+
+//-------------------------------------------------------
+//Scene functions.
+//-------------------------------------------------------
 
 void intersectWithScene(inout ray ray, inout float distance, out vec3 normal, out material reflectedMaterial)
 {
@@ -246,7 +295,7 @@ vec3 launchShadowRays(vec3 origin, vec3 incomingDirection, vec3 surfaceNormal){
 	return calculatedColor;
 };
 
-vec3 intersectWithSceneIterator(ray inputRay)
+vec3 intersectWithSceneIterator(ray primaryRay)
 {
 	vec3 inputRayColor = vec3(0, 0, 0);
 	
@@ -256,33 +305,36 @@ vec3 intersectWithSceneIterator(ray inputRay)
 	float distance;
 	
 	vec3 intersectionLocation;
-	
-	ray currentRay = inputRay;
-	
-	for(int i = 0; i < 10; i++)
-	{
-		distance = -1;
 		
-		intersectWithScene(currentRay, distance, normal, reflectedMaterial);
+	ray rayBuffer[32];
+	
+    rayBuffer[0] = primaryRay;
+			
+	for(int i = 0; i < 10; i++)
+	{	
+		distance = -1;
+								
+		intersectWithScene(rayBuffer[0], distance, normal, reflectedMaterial);
 				
 		//if the distance to intersection is too large, pretent it doesn't intersect.
-		if(distance < 0){
-			break;
-		}
-				
-		intersectionLocation = currentRay.origin + currentRay.direction * distance;
+		if(distance > 0){
 		
-		if(reflectedMaterial.diffuse > 0)
-		{
-			vec3 shadowColor = launchShadowRays(currentRay.origin + currentRay.direction * distance, currentRay.direction, normal);
-			inputRayColor += reflectedMaterial.diffuse * shadowColor * currentRay.intensity * reflectedMaterial.color;
-		};
-		
-		if(reflectedMaterial.reflectivity > epsilon){
-			currentRay = ray(intersectionLocation, currentRay.direction - 2 * dot(currentRay.direction, normal) * normal, currentRay.intensity, -1.0);
-			currentRay.intensity *= reflectedMaterial.reflectivity;
-		} else{
-			break;
+			intersectionLocation = rayBuffer[0].origin + rayBuffer[0].direction * distance;
+			
+			if(reflectedMaterial.diffuse > 0)
+			{
+				vec3 shadowColor = launchShadowRays(rayBuffer[0].origin + rayBuffer[0].direction * distance, rayBuffer[0].direction, normal);
+				inputRayColor += reflectedMaterial.diffuse * shadowColor * rayBuffer[0].intensity * reflectedMaterial.color;
+			};
+			
+			//for performance optimisation, a reflection results into overwriting the current ray.
+			if(reflectedMaterial.reflectivity > epsilon){
+				rayBuffer[0] = ray(intersectionLocation, rayBuffer[0].direction - 2 * dot(rayBuffer[0].direction, normal) * normal, rayBuffer[0].intensity, -1.0);
+				rayBuffer[0].intensity *= reflectedMaterial.reflectivity;
+			}
+			else
+				break;
+
 		}
 	}
 	

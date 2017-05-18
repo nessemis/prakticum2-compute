@@ -4,6 +4,7 @@ using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using System.IO;
 using OpenTK.Input;
+using System.Diagnostics;
 
 //sources:
 //https://codeyarns.com/2013/06/07/how-to-get-started-with-opentk-using-c-and-visual-studio/
@@ -24,6 +25,8 @@ namespace GLSLRayTracer
 
         Camera cam;
 
+        Stopwatch fpsCounter;
+
         //We leave the framerate unlocked.
         public Window() : base (width, height, GraphicsMode.Default, "RayTracer")
         {
@@ -38,11 +41,9 @@ namespace GLSLRayTracer
 
             ReloadShader();
 
-          
-
-
-
             cam = new Camera(computeHandle);
+
+            fpsCounter = Stopwatch.StartNew();
         }
 
         private void ReloadShader()
@@ -99,6 +100,10 @@ namespace GLSLRayTracer
         protected override void OnUpdateFrame(FrameEventArgs e)
         {
             base.OnUpdateFrame(e);
+
+            Console.WriteLine(1 / (fpsCounter.ElapsedMilliseconds / 1000f));
+
+            fpsCounter.Restart();
 
             cam.Update();
 
