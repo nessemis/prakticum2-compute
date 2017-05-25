@@ -25,8 +25,6 @@ namespace GLSLRayTracer
 
         Camera cam;
 
-        Stopwatch fpsCounter;
-
         //We leave the framerate unlocked.
         public Window() : base (width, height, GraphicsMode.Default, "RayTracer")
         {
@@ -42,8 +40,6 @@ namespace GLSLRayTracer
             ReloadShader();
 
             cam = new Camera(computeHandle);
-
-            fpsCounter = Stopwatch.StartNew();
         }
 
         private void ReloadShader()
@@ -54,7 +50,7 @@ namespace GLSLRayTracer
             computeHandle = GL.CreateProgram();
 
             LoadShader("../../shaders/vs.glsl", ShaderType.VertexShader, computeHandle, out vertexShader);
-            LoadShader("../../shaders/fs.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
+            LoadShader("../../shaders/fs-fast.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
 
             GL.LinkProgram(computeHandle);
             GL.UseProgram(computeHandle);
@@ -101,9 +97,7 @@ namespace GLSLRayTracer
         {
             base.OnUpdateFrame(e);
 
-            Console.WriteLine(1 / (fpsCounter.ElapsedMilliseconds / 1000f));
-
-            fpsCounter.Restart();
+            Console.WriteLine(RenderFrequency);
 
             cam.Update();
 
