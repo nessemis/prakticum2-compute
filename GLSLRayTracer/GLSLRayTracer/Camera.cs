@@ -132,7 +132,7 @@ namespace GLSLRayTracer
 
         private Vector3 MovementDirectionRight()
         {
-            Vector3 directionRightVector = new Vector3(direction.Y, direction.X, 0);
+            Vector3 directionRightVector = Vector3.Cross(direction, new Vector3(0, 0, -1));
             directionRightVector.Normalize();
             return directionRightVector;
         }

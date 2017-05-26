@@ -12,7 +12,7 @@ namespace GLSLRayTracer
         {
             using (Window window = new Window())
             {
-                window.Run();
+                window.Run(60);
             }
         }
     }

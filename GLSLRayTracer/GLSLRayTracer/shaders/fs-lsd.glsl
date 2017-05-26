@@ -103,7 +103,7 @@ float intersectPlane(const ray ray, const plane plane){
 	return distance;
 };
 
-//mÃ¶ller-trumbore ray-triangle intersection algoritm.
+//möller-trumbore ray-triangle intersection algoritm.
 float intersectTriangle(const ray ray, const triangle triangle){
 	vec3 p, q, t;
 	float det, inv_det, u, v;

@@ -16,11 +16,11 @@ uniform vec3 dBotLeft;
 uniform vec3 dRight;
 uniform vec3 dUp;
 
-const float epsilon = 0.0005;
+#define epsilon 0.0005
 
-const float minimumIntensity = 0.0001;
+#define minimumIntensity 0.0001
 
-const float maxDistance = 10000000000.0;
+#define maxDistance 10000000000.0
 
 //-------------------------------------------------------
 //Primitives.
@@ -112,7 +112,7 @@ const plane planes[3] = {
 
 #define NUM_LIGHTS 1
 const light lights[1] = {
-	{vec3(0, 0, 50), vec3(10000000, 10000000, 10000000)}
+	{vec3(0, 0, 2), vec3(1000, 1000, 1000)}
 };
 
 //-------------------------------------------------------
