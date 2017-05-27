@@ -8,6 +8,17 @@ namespace GLSLRayTracer
 {
     class Camera
     {
+        //why does this have to be in degrees, we pretty much only use radials.
+        float verticalViewingAngleInDegrees = 90;
+
+        float verticalViewingAngle
+        {
+            get
+            {
+                return (float) (verticalViewingAngleInDegrees / 180f * Math.PI);
+            }
+        }
+
         int computeHandle;
 
         int uniform_location;
@@ -15,10 +26,13 @@ namespace GLSLRayTracer
         int uniform_dRight;
         int uniform_dUp;
 
+
         Vector3 location;
 
         //angles.x is the angle of rotation around the z axis, angles.y is the rotation around the xy plane.
-        Vector3 sphericalCoords;
+        Vector2 rotation;
+
+        bool shaderInvalid;
 
         Vector3 dBotLeft;
         Vector3 dRight;
@@ -28,8 +42,7 @@ namespace GLSLRayTracer
         {
             get
             {
-                Vector3 directionVector = new Vector3((float)Math.Cos(sphericalCoords.X), (float)Math.Sin(sphericalCoords.X), (float)Math.Sin(sphericalCoords.Y));
-                directionVector.Normalize();
+                Vector3 directionVector = new Vector3((float)(Math.Sin(rotation.Y) * Math.Cos(rotation.X)), (float)(Math.Sin(rotation.Y) * Math.Sin(rotation.X)), (float)Math.Cos(rotation.Y));
                 return directionVector;
             }
         }
@@ -61,15 +74,20 @@ namespace GLSLRayTracer
         private void InitCamera()
         {
             location = Vector3.Zero;
-            sphericalCoords = Vector3.Zero;
+            rotation = new Vector2(0, (float) Math.PI / 2);
             InitDirections();
         }
 
         private void InitDirections()
         {
-            dRight = new Vector3((float)-Math.Sin(sphericalCoords.X), (float)Math.Cos(sphericalCoords.X), 0.0f);
-            dUp = -Vector3.Cross(dRight, direction) / 2;
-            dRight /= 2;
+            //sin(x + 1/2pi) = cos(x).
+            dRight = new Vector3((float) -Math.Sin(rotation.X), (float) Math.Cos(rotation.X), 0);
+            //dright is perpendicular to direction with length 1, so we don't need to normalize.
+            dUp = Vector3.Cross(dRight, direction);
+
+            dRight *= (float)Math.Tan(verticalViewingAngle / 2) * 2;
+
+            dUp *= (float)Math.Tan(verticalViewingAngle) * ((float)Window.width / Window.height) ;
 
             dBotLeft = direction - 1/2f * dRight - 1/2f * dUp;
         }
@@ -87,47 +105,73 @@ namespace GLSLRayTracer
             if (keyboard[OpenTK.Input.Key.W])
             {
                 location += 1/10f * direction;
+                shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.S])
             {
                 location -= 1/10f * direction;
+                shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.A])
             {
                 location -= 1/10f * MovementDirectionRight();
+                shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.D])
             {
                 location += 1 / 10f * MovementDirectionRight();
+                shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.Q])
             {
                 location += new Vector3(0, 0.0f, 0.1f);
+                shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.E])
             {
                 location += new Vector3(0, 0.0f, -0.1f);
+                shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.Up])
             {
-                sphericalCoords += new Vector3(0, 0.03f, 0);
+                rotation += new Vector2(0, 0.03f);
+                shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.Down])
             {
-                sphericalCoords -= new Vector3(0, 0.03f, 0);
+                rotation -= new Vector2(0, 0.03f);
+                shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.Left])
             {
-                sphericalCoords -= new Vector3(0.03f, 0, 0);
+                rotation -= new Vector2(0.03f, 0);
+                shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.Right])
             {
-                sphericalCoords += new Vector3(0.03f, 0, 0);
+                rotation += new Vector2(0.03f, 0);
+                shaderInvalid = true;
+            }
+            if (keyboard[OpenTK.Input.Key.Number1])
+            {
+                verticalViewingAngleInDegrees -= 0.5f;
+                shaderInvalid = true;
+            }
+            if (keyboard[OpenTK.Input.Key.Number2])
+            {
+                verticalViewingAngleInDegrees += 0.5f;
+                shaderInvalid = true;
             }
 
-            InitDirections();
 
-            UpdateShader();
+            if (shaderInvalid)
+            {
+                InitDirections();
+
+                UpdateShader();
+
+                shaderInvalid = false;
+            }
         }
 
         private Vector3 MovementDirectionRight()

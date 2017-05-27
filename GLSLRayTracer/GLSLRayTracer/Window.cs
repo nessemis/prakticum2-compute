@@ -12,8 +12,8 @@ namespace GLSLRayTracer
 {
     class Window : GameWindow
     {
-        const int width = 800;
-        const int height = 600;
+        public const int width = 800;
+        public const int height = 600;
 
         int computeHandle;
 
@@ -50,7 +50,7 @@ namespace GLSLRayTracer
             computeHandle = GL.CreateProgram();
 
             LoadShader("../../shaders/vs.glsl", ShaderType.VertexShader, computeHandle, out vertexShader);
-            LoadShader("../../shaders/fs.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
+            LoadShader("../../shaders/fs-fast.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
 
             GL.LinkProgram(computeHandle);
             GL.UseProgram(computeHandle);
@@ -96,6 +96,8 @@ namespace GLSLRayTracer
         protected override void OnUpdateFrame(FrameEventArgs e)
         {
             base.OnUpdateFrame(e);
+
+            Console.WriteLine(RenderFrequency);
 
             cam.Update();
 

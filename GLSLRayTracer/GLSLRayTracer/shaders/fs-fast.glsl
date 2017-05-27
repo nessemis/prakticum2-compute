@@ -105,9 +105,9 @@ const sphere spheres[2] = {
 
 #define NUM_PLANES 3
 const plane planes[3] = {
-	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 0), 1.0, 0.5)},
-	{vec3(0, -1, 0), 4.0, material(vec3(0, 1, 0), 1.0, 0.5)},
-	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.5)}
+	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 0), 1.0, 0.0)},
+	{vec3(0, -1, 0), 4.0, material(vec3(0, 1, 0), 1.0, 0.0)},
+	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.0)}
 };
 
 #define NUM_LIGHTS 1
@@ -119,7 +119,7 @@ const light lights[1] = {
 //Scene intersections.
 //-------------------------------------------------------
 
-void intersectWithSpheres (inout ray ray, inout float distance, inout material material, inout vec3 normal){
+void intersectWithSpheres (const ray ray, inout float distance, inout material material, inout vec3 normal){
 	for (int i = 0; i < NUM_SPHERES; i++) {
 		float sphereDistance = intersectSphere(ray, spheres[i]);
 		if (sphereDistance > epsilon && (sphereDistance < distance)){
@@ -130,7 +130,7 @@ void intersectWithSpheres (inout ray ray, inout float distance, inout material m
 	};
 };
 
-bool intersectWithSpheresShadow (inout ray ray, const float distance){
+bool intersectWithSpheresShadow (const ray ray, const float distance){
 	for (int i = 0; i < NUM_SPHERES; i++) {
 		float sphereDistance = intersectSphere(ray, spheres[i]);
 		if (sphereDistance > epsilon && (sphereDistance < distance)){
@@ -140,7 +140,7 @@ bool intersectWithSpheresShadow (inout ray ray, const float distance){
 	return false;
 };
 
-void intersectWithPlanes (inout ray ray, inout float distance, inout material material, inout vec3 normal){
+void intersectWithPlanes (const ray ray, inout float distance, inout material material, inout vec3 normal){
 	for (int i = 0; i < NUM_PLANES; i++) {
 		float planeDistance = intersectPlane(ray, planes[i]);
 		if (planeDistance > epsilon && (planeDistance < distance)){
@@ -151,7 +151,7 @@ void intersectWithPlanes (inout ray ray, inout float distance, inout material ma
 	};
 };
 
-bool intersectWithPlanesShadow (inout ray ray, const float distance){
+bool intersectWithPlanesShadow (const ray ray, const float distance){
 	for (int i = 0; i < NUM_PLANES; i++) {
 		float planeDistance = intersectPlane(ray, planes[i]);
 		if (planeDistance > epsilon && (planeDistance < distance)){
@@ -165,7 +165,7 @@ bool intersectWithPlanesShadow (inout ray ray, const float distance){
 //Utility functions.
 //-------------------------------------------------------
 
-void updateIntensity(inout ray ray, float distance){
+void updateIntensity(inout ray ray, const float distance){
 	ray.intensity /= distance * distance;
 };
 
@@ -180,14 +180,14 @@ void intersectWithScene(inout ray ray, inout float distance, inout vec3 normal, 
 	intersectWithPlanes(ray, distance, reflectedMaterial, normal);
 };
 
-bool intersectWithSceneShadowRay(inout ray ray, inout float distance)
+bool intersectWithSceneShadowRay(const ray ray, const float distance)
 {
 	if(intersectWithSpheresShadow(ray, distance))
 		return true;
 	return intersectWithPlanesShadow(ray, distance);
 }
 
-vec3 launchShadowRays(vec3 origin, vec3 incomingDirection, vec3 surfaceNormal){
+vec3 launchShadowRays(const vec3 origin, const vec3 surfaceNormal){
 	vec3 calculatedColor = vec3(0, 0, 0);
 	
 	vec3 originToLight;
@@ -243,7 +243,7 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 			intersectionLocation = primaryRay.origin + primaryRay.direction * distance;
 			
 			if(reflectedMaterial.diffuse > epsilon){
-				vec3 shadowColor = launchShadowRays(primaryRay.origin + primaryRay.direction * distance, primaryRay.direction, normal);
+				vec3 shadowColor = launchShadowRays(primaryRay.origin + primaryRay.direction * distance, normal);
 				inputRayColor += reflectedMaterial.diffuse * shadowColor * primaryRay.intensity * reflectedMaterial.color;
 			};
 									
