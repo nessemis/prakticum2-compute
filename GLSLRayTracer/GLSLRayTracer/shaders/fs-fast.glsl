@@ -5,6 +5,11 @@ out vec4 outputColor;
 
 uniform vec2 windowSize;
 
+uniform bool renderDebug;
+
+//Matrix which transforms to world space coordinates.
+uniform mat4 debugTransformationMatrix;
+
 //-------------------------------------------------------
 //Camera.
 //-------------------------------------------------------
@@ -261,6 +266,25 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 }
 
 //-------------------------------------------------------
+//Debug functions.
+//-------------------------------------------------------
+
+vec3 renderDebugPrimitives(float x, float y){
+	vec3 color = vec3(0, 0, 0);
+
+	for(int i = 0; i < NUM_SPHERES; i++){
+		vec3 location = vec3(debugTransformationMatrix * vec4(spheres[i].location, 1.0));
+		
+		float distanceToEdge = dot(vec3(y, x, 0) - location, vec3(y, x, 0) - location) - spheres[i].radius;
+		
+		if (abs(distanceToEdge) < 0.01)
+			color = spheres[i].material.color;
+	}
+	
+	return color;
+};
+
+//-------------------------------------------------------
 //Main program.
 //-------------------------------------------------------
 
@@ -278,5 +302,9 @@ void main(){
 
 	vec3 direction = normalize(dBotLeft + pixelPosition.x * dRight + pixelPosition.y * dUp);
 
-	outputColor = getRayColor(ray(camLocation, direction, 1.0));
+	if(!renderDebug)
+		outputColor = getRayColor(ray(camLocation, direction, 1.0));
+	else{
+		outputColor = vec4(renderDebugPrimitives((pixelPosition.x - 0.5) * 10, (pixelPosition.y - 0.2) * 10), 1.0);
+	}
 };

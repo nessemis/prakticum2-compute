@@ -21,11 +21,16 @@ namespace GLSLRayTracer
 
         int computeHandle;
 
+
+        int uniform_renderDebug;
+        int uniform_debugTransformationMatrix;
+
         int uniform_location;
         int uniform_dBotLeft;
         int uniform_dRight;
         int uniform_dUp;
 
+        Matrix4 debugMatrix;
 
         Vector3 location;
 
@@ -33,6 +38,8 @@ namespace GLSLRayTracer
         Vector2 rotation;
 
         bool shaderInvalid;
+
+        bool renderDebug = true;
 
         Vector3 dBotLeft;
         Vector3 dRight;
@@ -65,6 +72,9 @@ namespace GLSLRayTracer
 
         private void InitUniform()
         {
+            uniform_renderDebug = GL.GetUniformLocation(computeHandle, "renderDebug");
+            uniform_debugTransformationMatrix = GL.GetUniformLocation(computeHandle, "debugTransformationMatrix");
+
             uniform_location = GL.GetUniformLocation(computeHandle, "camLocation");
             uniform_dBotLeft = GL.GetUniformLocation(computeHandle, "dBotLeft");
             uniform_dRight = GL.GetUniformLocation(computeHandle, "dRight");
@@ -92,12 +102,27 @@ namespace GLSLRayTracer
             dBotLeft = direction - 1/2f * dRight - 1/2f * dUp;
         }
 
+        private void DebugMatrix()
+        {
+            debugMatrix = Matrix4.CreateTranslation(-location);
+            debugMatrix *= Matrix4.CreateRotationZ(-rotation.X);
+            debugMatrix *= Matrix4.CreateRotationY(-(rotation.Y - (float) Math.PI / 2));
+
+        }
+
         private void UpdateShader()
         {
             GL.Uniform3(uniform_location, location);
             GL.Uniform3(uniform_dBotLeft, dBotLeft);
             GL.Uniform3(uniform_dRight, dRight);
             GL.Uniform3(uniform_dUp, dUp);
+
+            GL.Uniform1(uniform_renderDebug, renderDebug ? 1 : 0);
+            if (renderDebug)
+            {
+                DebugMatrix();
+                GL.UniformMatrix4(uniform_debugTransformationMatrix, false, ref debugMatrix);
+            }
         }
 
         public void Input(KeyboardState keyboard)
@@ -160,6 +185,17 @@ namespace GLSLRayTracer
             if (keyboard[OpenTK.Input.Key.Number2])
             {
                 verticalViewingAngleInDegrees += 0.5f;
+                shaderInvalid = true;
+            }
+
+            if (keyboard[OpenTK.Input.Key.Number3])
+            {
+                renderDebug = true;
+                shaderInvalid = true;
+            }
+            if (keyboard[OpenTK.Input.Key.Number4])
+            {
+                renderDebug = false;
                 shaderInvalid = true;
             }
 
