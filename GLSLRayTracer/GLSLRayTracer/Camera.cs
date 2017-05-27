@@ -83,11 +83,11 @@ namespace GLSLRayTracer
             //sin(x + 1/2pi) = cos(x).
             dRight = new Vector3((float) -Math.Sin(rotation.X), (float) Math.Cos(rotation.X), 0);
             //dright is perpendicular to direction with length 1, so we don't need to normalize.
-            dUp = Vector3.Cross(dRight, direction);
+            dUp = -Vector3.Cross(dRight, direction);
 
             dRight *= (float)Math.Tan(verticalViewingAngle / 2) * 2;
 
-            dUp *= (float)Math.Tan(verticalViewingAngle) * ((float)Window.width / Window.height) ;
+            dUp *= (float)Math.Tan(verticalViewingAngle / 2) * 2 * ((float)Window.height / Window.width) ;
 
             dBotLeft = direction - 1/2f * dRight - 1/2f * dUp;
         }
