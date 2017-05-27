@@ -102,6 +102,8 @@ namespace GLSLRayTracer
 
         public void Input(KeyboardState keyboard)
         {
+            //Hold num1 and play this music to chill out.
+            //https://www.youtube.com/watch?v=qmNNvnXGM9o
             if (keyboard[OpenTK.Input.Key.W])
             {
                 location += 1/10f * direction;
