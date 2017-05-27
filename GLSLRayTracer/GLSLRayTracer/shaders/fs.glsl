@@ -20,7 +20,7 @@ uniform vec3 dUp;
 
 #define minimumIntensity 0.0001
 
-#define RAY_BUFFER_SIZE 1
+#define RAY_BUFFER_SIZE 10
 
 #define maxDistance 10000000000.0
 
@@ -36,6 +36,7 @@ struct light{
 struct material{
 	vec3 color;
 	float diffuse;
+	float reflectivity;
 	float emitance;
 	//refractive index;
 	float r_index;
@@ -159,27 +160,28 @@ vec3 triangleNormal(const triangle triangle, const ray ray){
 //Scene declarations.
 //-------------------------------------------------------
 
-#define NUM_SPHERES 2
-const sphere spheres[2] = {
-	{vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 1.0, 1.0)},
-	{vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 1.0, 1.0)}
+#define NUM_SPHERES 3
+const sphere spheres[3] = {
+	{vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 0.0, 1.0, 1.0)},
+	{vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 0.0, 1.0, 1.1)},
+	{vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 1.0)}
 };
 
 #define NUM_PLANES 3
 const plane planes[3] = {
-	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 0), 1.0, 0.0, 1.0)},
-	{vec3(0, -1, 0), 4.0, material(vec3(0, 1, 0), 1.0, 0.0, 1.0)},
-	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.0, 1.0)}
+	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 0), 0.5, 1.0, 0.0, 1.0)},
+	{vec3(0, -1, 0), 4.0, material(vec3(0, 1, 0), 1.0, 0.0, 0.0, 1.0)},
+	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.0, 0.0, 1.0)}
 };
 
 #define NUM_TRIANGLES 0
 const triangle triangles[1] = {
-	{vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 0.0, 0.0)}
+	{vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 0.0)}
 };
 
 #define NUM_LIGHTS 1
 const light lights[1] = {
-	{vec3(0, 0, 5), vec3(1000, 1000, 1000)}
+	{vec3(0, 0, 5), vec3(10000, 10000, 10000)}
 };
 
 //-------------------------------------------------------
@@ -253,15 +255,17 @@ bool intersectWithTrianglesShadow (inout ray ray, const float distance){
 //Utility functions.
 //-------------------------------------------------------
 
-float calcReflectionCoefficient(const float n1, const float n2, const float angle){
+float calcReflectionCoefficient(const float n1, const float n2, const float cos_a){
 	float R0 = (n1 - n2)/(n1 + n2);
 	R0 *=  R0;
-	float f = (1 - angle);
+	float f = (1 - cos_a);
 	return R0 + (1 - R0) * f * f * f * f * f;
 };
 
-float calcAngleOfRefraction(const float n1, const float n2, const float angle){
-	return asin(sin(angle) * n1 / n2);
+float calcAngleOfRefraction(const float n1, const float n2, const float cos_i){
+	float n = n1 / n2;
+	float sin_t2 = n * n * (1.0 - cos_i * cos_i);
+	return sqrt(1.0 - sin_t2);
 }
 
 void updateIntensity(inout ray ray, float distance){
@@ -274,7 +278,7 @@ int mostSignificantRay(const ray rayBuffer[RAY_BUFFER_SIZE]){
 		if(rayBuffer[i].intensity > rayBuffer[index].intensity)
 			index = i;
 
-	if(rayBuffer[index].intensity < 0.5)
+	if(rayBuffer[index].intensity < 0.01)
 		return -1;
 	else
 		return index;
@@ -283,7 +287,7 @@ int mostSignificantRay(const ray rayBuffer[RAY_BUFFER_SIZE]){
 int leastSignificantRay(const ray rayBuffer[RAY_BUFFER_SIZE]){
 	int index = 0;
 	for(int i = 1; i < RAY_BUFFER_SIZE; i++)
-		if(rayBuffer[i].intensity > rayBuffer[index].intensity)
+		if(rayBuffer[i].intensity < rayBuffer[index].intensity)
 			index = i;
 
 	return index;
@@ -358,8 +362,15 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 	vec3 intersectionLocation;
 		
 	ray rayBuffer[RAY_BUFFER_SIZE];
+	
+	for(int i = 0; i < RAY_BUFFER_SIZE; i++){
+		rayBuffer[i] = ray(vec3(0, 0, 0), vec3(0, 0, 0), 0, 0);
+	}
+	
     rayBuffer[0] = primaryRay;
 	
+	ray currentray;
+		
 	int index = 0;
 					
 	for(int i = 0; i < 10; i++)
@@ -368,54 +379,59 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 				
 		index = mostSignificantRay(rayBuffer);
 				
-		if(index != 0)
+		if(index == -1)
 			break;
 			
-		else
-		{
-			intersectWithScene(rayBuffer[index], distance, normal, reflectedMaterial);
-									
-			//if the distance to intersection is too large, pretent it doesn't intersect.
-			if(distance < maxDistance){
-				intersectionLocation = rayBuffer[index].origin + rayBuffer[index].direction * distance;
-				
-				if(reflectedMaterial.diffuse > epsilon){
-					vec3 shadowColor = launchShadowRays(rayBuffer[index].origin + rayBuffer[index].direction * distance, rayBuffer[index].direction, normal);
-					inputRayColor += reflectedMaterial.diffuse * shadowColor * rayBuffer[index].intensity * reflectedMaterial.color;
-				};
-				
+		currentray = rayBuffer[index];
+		
+		rayBuffer[index].intensity = 0;
+		
+		intersectWithScene(currentray, distance, normal, reflectedMaterial);
+								
+		//if the distance to intersection is too large, pretent it doesn't intersect.
+		if(distance < maxDistance){
+			intersectionLocation = currentray.origin + currentray.direction * distance;
+			
+			if(reflectedMaterial.diffuse > epsilon){
+				vec3 shadowColor = launchShadowRays(currentray.origin + currentray.direction * distance, currentray.direction, normal);
+				inputRayColor += reflectedMaterial.diffuse * shadowColor * currentray.intensity * reflectedMaterial.color;
+			};
+			
+			if(reflectedMaterial.reflectivity > epsilon){
+				rayBuffer[index] = ray(intersectionLocation, currentray.direction - 2 * dot(currentray.direction, normal) * normal, currentray.intensity * reflectedMaterial.reflectivity, currentray.r_index);
+			};
+			
+			if(reflectedMaterial.emitance > epsilon)
+			{
 				//the following code was derived from https://graphics.stanford.edu/courses/cs148-10-summer/docs/2006--degreve--reflection_refraction.pdf
 				float R0 = reflectedMaterial.emitance;
 				
-				float cos_i = dot(-rayBuffer[index].direction, normal);
-				
-				float intensity = rayBuffer[index].intensity;
-				
+				float cos_i = dot(-currentray.direction, normal);
+									
 				float n2 = 1.0;
-				if (rayBuffer[index].r_index != reflectedMaterial.r_index)
+				if (currentray.r_index != reflectedMaterial.r_index)
 					n2 = reflectedMaterial.r_index;
 				
 				//check for total internal reflection, if yes launch reflectedray.
-				if(sin(acos(cos_i)) > n2 / rayBuffer[index].r_index && rayBuffer[index].r_index > n2)
-					rayBuffer[index] = ray(intersectionLocation, rayBuffer[index].direction - 2 * dot(rayBuffer[index].direction, normal) * normal, intensity * R0, rayBuffer[index].r_index);
+				if(sin(acos(cos_i)) > n2 / currentray.r_index && currentray.r_index > n2)
+					rayBuffer[leastSignificantRay(rayBuffer)] = ray(intersectionLocation,currentray.direction - 2 * dot(currentray.direction, normal) * normal, currentray.intensity * R0, currentray.r_index);
 				else
 				{
-					float cos_t = cos(calcAngleOfRefraction(rayBuffer[index].r_index, n2, acos(cos_i)));
-					if(rayBuffer[index].r_index <= n2)
-						R0 *= calcReflectionCoefficient(rayBuffer[index].r_index, n2, cos_i);
+					float cos_t = cos(calcAngleOfRefraction(currentray.r_index, n2, acos(cos_i)));
+					if(currentray.r_index <= n2)
+						R0 *= calcReflectionCoefficient(currentray.r_index, n2, cos_i);
 					else
-						R0 *= calcReflectionCoefficient(rayBuffer[index].r_index, n2, cos_t);
-						
-					rayBuffer[index] = ray(intersectionLocation, rayBuffer[index].direction - 2 * dot(rayBuffer[index].direction, normal) * normal, intensity * R0, rayBuffer[index].r_index);
-					index = leastSignificantRay(rayBuffer);
+						R0 *= calcReflectionCoefficient(currentray.r_index, n2, cos_t);
+																				
+					rayBuffer[leastSignificantRay(rayBuffer)] = ray(intersectionLocation, (currentray.r_index / n2) * (currentray.direction + (cos_i - cos_t) * normal), currentray.intensity * (1 - R0), n2);
 					
-					rayBuffer[index] = ray(intersectionLocation, (rayBuffer[index].r_index / n2) * (rayBuffer[index].direction + (cos_i - cos_t) * normal), intensity * R0, rayBuffer[index].r_index);
-					rayBuffer[index].intensity = 1;
-				}	
+					rayBuffer[leastSignificantRay(rayBuffer)] = ray(intersectionLocation,currentray.direction - 2 * dot(currentray.direction, normal) * normal, currentray.intensity * R0, currentray.r_index);						
+				}
 			}
-			else
-				rayBuffer[index].intensity = 0;
 		}
+		else
+			rayBuffer[index].intensity = 0;
+
 	}
 	
 	return inputRayColor;

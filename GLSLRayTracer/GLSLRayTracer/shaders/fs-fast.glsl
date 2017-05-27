@@ -105,9 +105,9 @@ const sphere spheres[2] = {
 
 #define NUM_PLANES 3
 const plane planes[3] = {
-	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 0), 1.0, 0.0)},
-	{vec3(0, -1, 0), 4.0, material(vec3(0, 1, 0), 1.0, 0.0)},
-	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.0)}
+	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 0), 1.0, 0.5)},
+	{vec3(0, -1, 0), 4.0, material(vec3(0, 1, 0), 1.0, 0.5)},
+	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.5)}
 };
 
 #define NUM_LIGHTS 1
