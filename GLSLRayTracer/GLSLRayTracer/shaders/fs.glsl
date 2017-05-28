@@ -36,6 +36,7 @@ struct light{
 struct spotlight{
     vec3 location;
     vec3 direction;
+	vec3 color;
     float angle;
 
 };
@@ -176,7 +177,7 @@ const sphere spheres[3] = {
 
 #define NUM_PLANES 3
 const plane planes[3] = {
-	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 0), 0.5, 1.0, 0.0, 1.0)},
+	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 0), 0.5, 0.0, 0.0, 1.0)},
 	{vec3(0, -1, 0), 4.0, material(vec3(0, 1, 0), 1.0, 0.0, 0.0, 1.0)},
 	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.0, 0.0, 1.0)}
 };
@@ -188,12 +189,12 @@ const triangle triangles[1] = {
 
 #define NUM_LIGHTS 1
 const light lights[1] = {
-	{vec3(0, 0, 5), vec3(10000, 10000, 10000)}
+	{vec3(0, 0, 5), vec3(10000, 4000, 5000)}
 };
 
 #define NUM_SPOTLIGHTS 1
 const spotlight spotlights[1] = {
-	{vec3(0,0,2),vec3(0,1,0), -0.76 }
+	{vec3(-10,0,2),vec3(0,1,-1),vec3(10000, 4000, 5000), -0.76 }
 };
 
 //-------------------------------------------------------
@@ -357,23 +358,40 @@ vec3 launchShadowRays(vec3 origin, vec3 incomingDirection, vec3 surfaceNormal){
 			}
 		}
 	}
-	for(int i = 0; i < NUM_SPOTLIGHTS;i++){
-        originToLight = spotlights[i].location - origin;
-
-        distanceToLight = sqrt(dot(originToLight, originToLight));
-        originToLight /= distanceToLight;
-
-        float dirdis = sqrt(dot(spotlights[i].direction,spotlights[i].direction));
+	
+	for (int i = 0; i < NUM_SPOTLIGHTS; i++){
+		originToLight = spotlights[i].location - origin;
+		
+		float angle = dot(originToLight, surfaceNormal);
+		
+		float dirdis = sqrt(dot(spotlights[i].direction,spotlights[i].direction));
         vec3 dir = spotlights[i].direction/dirdis;
-
-        float angle = dot( originToLight , dir);
-        if(angle > spotlights[i].angle ){
-                calculatedColor  *= 0.1;
-        }else{
-                calculatedColor *= 1;
-        }
-
-    }
+		
+		distanceToLight = sqrt(dot(originToLight, originToLight));
+			originToLight /= distanceToLight;
+		
+		float angleSpotlight =  dot( originToLight , dir);
+		
+		
+		if (angle > 0 && angleSpotlight < spotlights[i].angle)
+		{
+			
+			
+			float angle = dot(originToLight, surfaceNormal);
+			
+			ray shadowRay = ray(origin, originToLight, 1.0, 1.0);
+					
+			if (!intersectWithSceneShadowRay(shadowRay, distanceToLight)){
+				updateIntensity(shadowRay, distanceToLight);
+				shadowRay.intensity *= angle;
+				
+				updateIntensity(shadowRay, distanceToLight);
+				calculatedColor +=  spotlights[i].color * shadowRay.intensity;
+			}
+		}
+	}
+	
+   
 	return calculatedColor;
 };
 
