@@ -33,6 +33,13 @@ struct light{
 	vec3 color;
 };
 
+struct spotlight{
+    vec3 location;
+    vec3 direction;
+    float angle;
+
+};
+
 struct material{
 	vec3 color;
 	float diffuse;
@@ -182,6 +189,11 @@ const triangle triangles[1] = {
 #define NUM_LIGHTS 1
 const light lights[1] = {
 	{vec3(0, 0, 5), vec3(10000, 10000, 10000)}
+};
+
+#define NUM_SPOTLIGHTS 1
+const spotlight spotlights[1] = {
+	{vec3(0,0,2),vec3(0,1,0), -0.76 }
 };
 
 //-------------------------------------------------------
@@ -345,6 +357,23 @@ vec3 launchShadowRays(vec3 origin, vec3 incomingDirection, vec3 surfaceNormal){
 			}
 		}
 	}
+	for(int i = 0; i < NUM_SPOTLIGHTS;i++){
+        originToLight = spotlights[i].location - origin;
+
+        distanceToLight = sqrt(dot(originToLight, originToLight));
+        originToLight /= distanceToLight;
+
+        float dirdis = sqrt(dot(spotlights[i].direction,spotlights[i].direction));
+        vec3 dir = spotlights[i].direction/dirdis;
+
+        float angle = dot( originToLight , dir);
+        if(angle > spotlights[i].angle ){
+                calculatedColor  *= 0.1;
+        }else{
+                calculatedColor *= 1;
+        }
+
+    }
 	return calculatedColor;
 };
 
