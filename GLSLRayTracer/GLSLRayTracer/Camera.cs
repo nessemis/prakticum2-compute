@@ -39,7 +39,7 @@ namespace GLSLRayTracer
 
         bool shaderInvalid;
 
-        bool renderDebug = true;
+        bool renderDebug = false;
 
         Vector3 dBotLeft;
         Vector3 dRight;
@@ -190,12 +190,12 @@ namespace GLSLRayTracer
 
             if (keyboard[OpenTK.Input.Key.Number3])
             {
-                renderDebug = true;
+                renderDebug = false;
                 shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.Number4])
             {
-                renderDebug = false;
+                renderDebug = true;
                 shaderInvalid = true;
             }
 
