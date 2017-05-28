@@ -269,13 +269,33 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 //Debug functions.
 //-------------------------------------------------------
 
-vec3 renderDebugPrimitives(float x, float y){
+void intersectDebugRay(ray primaryRay, vec2 pixelDirection, out bool intersection, out vec3 color){
+	vec3 normal;
+	material reflectedMaterial;
+	float distance;
+							
+	intersectWithScene(primaryRay, distance, normal, reflectedMaterial);
+	
+	vec3 screen_space_intersection = vec3(debugTransformationMatrix * vec4((distance * primaryRay.direction), 1.0));
+	
+	float dot_product = dot(screen_space_intersection, vec3(pixelDirection, 0.0));
+	
+	if(0 < dot_product && dot_product < length(pixelDirection)){
+		vec3 cross_product = cross(screen_space_intersection, vec3(pixelDirection, 0.0));
+		if(dot(cross_product, cross_product) < 0.1){
+			intersection = true;
+			color = vec3(1.0, 1.0, 1.0);
+		}	
+	}
+}
+
+vec3 renderDebugPrimitives(vec2 pixelDirection){
 	vec3 color = vec3(0, 0, 0);
 
 	for(int i = 0; i < NUM_SPHERES; i++){
 		vec3 location = vec3(debugTransformationMatrix * vec4(spheres[i].location, 1.0));
 		
-		float distanceToEdge = dot(vec3(y, x, 0) - location, vec3(y, x, 0) - location) - spheres[i].radius;
+		float distanceToEdge = dot(vec3(pixelDirection, 0) - location, vec3(pixelDirection, 0) - location) - spheres[i].radius;
 		
 		if (abs(distanceToEdge) < 0.01)
 			color = spheres[i].material.color;
@@ -300,11 +320,23 @@ void main(){
 	vec4 pixelLocation = gl_FragCoord;
 	vec2 pixelPosition = vec2(pixelLocation.x / windowSize.x, pixelLocation.y / windowSize.y);
 
-	vec3 direction = normalize(dBotLeft + pixelPosition.x * dRight + pixelPosition.y * dUp);
-
-	if(!renderDebug)
+	if(!renderDebug){
+		vec3 direction = normalize(dBotLeft + pixelPosition.x * dRight + pixelPosition.y * dUp);
 		outputColor = getRayColor(ray(camLocation, direction, 1.0));
+	}
 	else{
-		outputColor = vec4(renderDebugPrimitives((pixelPosition.x - 0.5) * 10, (pixelPosition.y - 0.2) * 10), 1.0);
+		bool inRay;
+		vec3 color;
+		
+		vec2 pixelDirection = vec2((pixelPosition.y - 0.2) * 10, (pixelPosition.x - 0.5) * 10);
+		
+		vec3 direction = normalize(dBotLeft + dRight / 2 + pixelPosition.y / 2);
+				
+		intersectDebugRay(ray(camLocation, direction, 1.0), pixelDirection, inRay, color);
+		
+		if(!inRay)
+			color = renderDebugPrimitives(pixelDirection), 1.0;
+			
+		outputColor = vec4(color, 1.0);
 	}
 };
