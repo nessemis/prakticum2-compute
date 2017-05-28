@@ -97,8 +97,6 @@ namespace GLSLRayTracer
         {
             base.OnUpdateFrame(e);
 
-            Console.WriteLine(RenderFrequency);
-
             cam.Update();
 
             if (Keyboard[Key.Escape])

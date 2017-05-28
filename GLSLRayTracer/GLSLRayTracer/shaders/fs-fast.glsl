@@ -269,23 +269,38 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 //Debug functions.
 //-------------------------------------------------------
 
+bool intersectWithVector(vec2 pixelPos, vec2 rayOrigin, vec2 screen_space_intersection){
+	vec2 transPixelPos = pixelPos - rayOrigin;
+	vec2 rayIntersectDir = screen_space_intersection - rayOrigin;
+	
+	float dot_product = dot(normalize(transPixelPos), rayIntersectDir);
+	if(0 < dot_product && length(transPixelPos) < dot_product){
+		float dot_product_2 = dot(transPixelPos, normalize(rayIntersectDir));
+		float cross_product = dot(transPixelPos, transPixelPos) - dot_product_2 * dot_product_2;
+		if(cross_product < 0.001)
+			return true;
+	}
+	return false;
+}
+
 void intersectDebugRay(ray primaryRay, vec2 pixelDirection, out bool intersection, out vec3 color){
 	vec3 normal;
 	material reflectedMaterial;
-	float distance;
+	float distance = maxDistance;
 							
 	intersectWithScene(primaryRay, distance, normal, reflectedMaterial);
 	
-	vec3 screen_space_intersection = vec3(debugTransformationMatrix * vec4((distance * primaryRay.direction), 1.0));
+	vec2 screen_space_ray_origin = vec2(debugTransformationMatrix * vec4(primaryRay.origin, 1.0));
 	
-	float dot_product = dot(screen_space_intersection, vec3(pixelDirection, 0.0));
+	vec2 screen_space_intersection = vec2(debugTransformationMatrix * vec4((distance * primaryRay.direction + primaryRay.origin), 1.0));
 	
-	if(0 < dot_product && dot_product < length(pixelDirection)){
-		vec3 cross_product = cross(screen_space_intersection, vec3(pixelDirection, 0.0));
-		if(dot(cross_product, cross_product) < 0.1){
-			intersection = true;
-			color = vec3(1.0, 1.0, 1.0);
-		}	
+	if(intersectWithVector(pixelDirection, screen_space_ray_origin, screen_space_intersection)){
+		intersection = true;
+		color = vec3(1.0, 1.0, 1.0);
+	}
+	else{
+		intersection = false;
+		color = vec3(0.0, 0.0, 0.0);
 	}
 }
 
@@ -330,7 +345,7 @@ void main(){
 		
 		vec2 pixelDirection = vec2((pixelPosition.y - 0.2) * 10, (pixelPosition.x - 0.5) * 10);
 		
-		vec3 direction = normalize(dBotLeft + dRight / 2 + pixelPosition.y / 2);
+		vec3 direction = normalize(dBotLeft + dRight / 2 + dUp / 2);
 				
 		intersectDebugRay(ray(camLocation, direction, 1.0), pixelDirection, inRay, color);
 		
