@@ -5,6 +5,13 @@ out vec4 outputColor;
 
 uniform vec2 windowSize;
 
+uniform bool renderDebug;
+
+uniform sampler2D skydome;
+
+//Matrix which transforms to world space coordinates.
+uniform mat4 debugTransformationMatrix;
+
 //-------------------------------------------------------
 //Camera.
 //-------------------------------------------------------
@@ -22,7 +29,9 @@ uniform vec3 dUp;
 
 #define RAY_BUFFER_SIZE 10
 
-#define maxDistance 10000000000.0
+#define maxDistance 1000000.0
+
+#define PI 3.141592654
 
 //-------------------------------------------------------
 //Primitives.
@@ -175,11 +184,9 @@ const sphere spheres[3] = {
 	{vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 1.0)}
 };
 
-#define NUM_PLANES 3
-const plane planes[3] = {
-	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 0), 0.5, 0.0, 0.0, 1.0)},
-	{vec3(0, -1, 0), 4.0, material(vec3(0, 1, 0), 1.0, 0.0, 0.0, 1.0)},
-	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.0, 0.0, 1.0)}
+#define NUM_PLANES 0
+const plane planes[1] = {
+	{vec3(0, 0, -1), 1.0, material(vec3(1, 1, 1), 0.5, 0.5, 0.0, 1.0)},
 };
 
 #define NUM_TRIANGLES 0
@@ -192,7 +199,7 @@ const light lights[1] = {
 	{vec3(0, 0, 5), vec3(10000, 4000, 5000)}
 };
 
-#define NUM_SPOTLIGHTS 1
+#define NUM_SPOTLIGHTS 0
 const spotlight spotlights[1] = {
 	{vec3(-10,0,2),vec3(0,1,-1),vec3(10000, 4000, 5000), -0.76 }
 };
@@ -477,12 +484,130 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 			}
 		}
 		else
+		{
 			rayBuffer[index].intensity = 0;
-
+			vec2 uv = vec2(atan(currentray.direction.y, currentray.direction.x) / (2 * PI) + 0.5, acos(currentray.direction.z) / PI);
+			inputRayColor += currentray.intensity * vec3(texture2D(skydome, uv));
+		}
 	}
 	
 	return inputRayColor;
 }
+
+
+//-------------------------------------------------------
+//Debug functions.
+//-------------------------------------------------------
+
+bool intersectWithVector(vec2 pixelPos, vec2 rayOrigin, vec2 screen_space_intersection){
+	vec2 transPixelPos = pixelPos - rayOrigin;
+	vec2 rayIntersectDir = screen_space_intersection - rayOrigin;
+	
+	float dot_product = dot(normalize(transPixelPos), rayIntersectDir);
+	if(0 < dot_product && length(transPixelPos) < dot_product){
+		float dot_product_2 = dot(transPixelPos, normalize(rayIntersectDir));
+		float cross_product = dot(transPixelPos, transPixelPos) - dot_product_2 * dot_product_2;
+		if(cross_product < 0.0001)
+			return true;
+	}
+	return false;
+}
+
+void intersectDebugShadowRay(vec2 pixelPos, vec3 intersectLoc, vec3 sufaceNorm, out bool inShadow, out bool inShadowHit){
+	vec3 originToLight;
+	float distanceToLight;
+	
+	inShadow = false;
+	inShadowHit = false;
+	
+	for (int i = 0; i < NUM_LIGHTS; i++){
+		originToLight = lights[i].location - intersectLoc;
+		
+		distanceToLight = sqrt(dot(originToLight, originToLight));
+
+		if(distanceToLight < 100 && intersectWithVector(pixelPos, vec2(debugTransformationMatrix * vec4(intersectLoc, 1.0)), vec2(debugTransformationMatrix * vec4(lights[i].location, 1.0))))
+		{
+			inShadow = true;
+			
+			float angle = dot(originToLight, sufaceNorm);
+		
+			if (angle > 0)
+			{
+				originToLight /= distanceToLight;
+							
+				ray shadowRay = ray(intersectLoc, originToLight, 1.0, 1.0);
+										 
+				if (intersectWithSceneShadowRay(shadowRay, distanceToLight)){
+					inShadowHit = true;
+					return;
+				}
+			}
+		}
+	}
+}
+
+void intersectDebugRay(ray primaryRay, vec2 pixelDirection, out bool intersection, out vec3 color){
+	vec3 normal;
+	material reflectedMaterial;
+	float distance = maxDistance;
+	
+	intersection = false;
+							
+	intersectWithScene(primaryRay, distance, normal, reflectedMaterial);
+	
+	vec2 screen_space_ray_origin = vec2(debugTransformationMatrix * vec4(primaryRay.origin, 1.0));
+	
+	vec2 screen_space_intersection = vec2(debugTransformationMatrix * vec4((distance * primaryRay.direction + primaryRay.origin), 1.0));
+	
+	if(intersectWithVector(pixelDirection, screen_space_ray_origin, screen_space_intersection)){
+		intersection = true;
+		color = vec3(1.0, 1.0, 0.0);
+	}
+	else if(reflectedMaterial.diffuse > 0){
+		bool inShadow;
+		bool inShadowHit;
+		
+		intersectDebugShadowRay(pixelDirection, distance * primaryRay.direction + primaryRay.origin, normal, inShadow, inShadowHit);
+		
+		if(inShadow)
+		{
+			intersection = true;
+			color = vec3(0.0, 1.0, 1.0);
+			if(inShadowHit)
+				color = vec3(0.0, 0.5, 0.5);
+		}
+	}
+	if(!intersection && reflectedMaterial.reflectivity > 0){
+		primaryRay = ray(distance * primaryRay.direction + primaryRay.origin, primaryRay.direction - 2 * dot(primaryRay.direction, normal) * normal, 1.0, 1.0);
+		distance = maxDistance;
+		intersectWithScene(primaryRay, distance, normal, reflectedMaterial);
+		
+		screen_space_ray_origin = vec2(debugTransformationMatrix * vec4(primaryRay.origin, 1.0));
+
+		screen_space_intersection = vec2(debugTransformationMatrix * vec4((distance * primaryRay.direction + primaryRay.origin), 1.0));
+		
+		if(intersectWithVector(pixelDirection, screen_space_ray_origin, screen_space_intersection)){
+			intersection = true;
+			color = vec3(0.5, 0.5, 0.0);
+		}
+
+	}
+}
+
+vec3 renderDebugPrimitives(vec2 pixelDirection){
+	vec3 color = vec3(0, 0, 0);
+
+	for(int i = 0; i < NUM_SPHERES; i++){
+		vec3 location = vec3(debugTransformationMatrix * vec4(spheres[i].location, 1.0));
+		
+		float distanceToEdge = dot(vec3(pixelDirection, 0) - location, vec3(pixelDirection, 0) - location) - spheres[i].radius;
+		
+		if (abs(distanceToEdge) < 0.1)
+			color = spheres[i].material.color;
+	}
+	
+	return color;
+};
 
 //-------------------------------------------------------
 //Main program.
@@ -500,8 +625,23 @@ void main(){
 	vec4 pixelLocation = gl_FragCoord;
 	vec2 pixelPosition = vec2(pixelLocation.x / windowSize.x, pixelLocation.y / windowSize.y);
 
-	vec3 direction = normalize(dBotLeft + pixelPosition.x * dRight + pixelPosition.y * dUp);
-
-	//we assume the camera doesn't start inside the object.
-	outputColor = getRayColor(ray(camLocation, direction, 1.0, 1.0));
+	if(!renderDebug){
+		vec3 direction = normalize(dBotLeft + pixelPosition.x * dRight + pixelPosition.y * dUp);
+		outputColor = getRayColor(ray(camLocation, direction, 1.0, 1.0));
+	}
+	else{
+		bool inRay;
+		vec3 color;
+		
+		vec2 pixelDirection = vec2((pixelPosition.y - 0.2) * 10, (pixelPosition.x - 0.5) * 10);
+		
+		vec3 direction = normalize(dBotLeft + dRight / 2 + dUp / 2);
+				
+		intersectDebugRay(ray(camLocation, direction, 1.0, 1.0), pixelDirection, inRay, color);
+		
+		if(!inRay)
+			color = renderDebugPrimitives(pixelDirection), 1.0;
+			
+		outputColor = vec4(color, 1.0);
+	}
 };

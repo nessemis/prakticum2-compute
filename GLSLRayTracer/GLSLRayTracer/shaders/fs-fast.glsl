@@ -320,6 +320,8 @@ void intersectDebugRay(ray primaryRay, vec2 pixelDirection, out bool intersectio
 	vec3 normal;
 	material reflectedMaterial;
 	float distance = maxDistance;
+	
+	intersection = false;
 							
 	intersectWithScene(primaryRay, distance, normal, reflectedMaterial);
 	

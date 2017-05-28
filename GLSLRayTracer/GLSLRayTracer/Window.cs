@@ -4,7 +4,8 @@ using OpenTK.Graphics;
 using OpenTK.Graphics.OpenGL;
 using System.IO;
 using OpenTK.Input;
-using System.Diagnostics;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 //sources:
 //https://codeyarns.com/2013/06/07/how-to-get-started-with-opentk-using-c-and-visual-studio/
@@ -62,6 +63,34 @@ namespace GLSLRayTracer
             InitUniform();
             WriteWindowCoord();
 
+            LoadSkydome();
+        }
+
+        private void LoadSkydome()
+        {
+            int uniform_skydome = GL.GetUniformLocation(computeHandle, "skydome");
+
+            Bitmap skydome = new Bitmap("../../assets/skydome.jpg");
+
+            int texture = GL.GenTexture();
+
+            GL.BindTexture(TextureTarget.Texture2D, texture);
+
+            BitmapData data = skydome.LockBits(new Rectangle(0, 0, skydome.Width, skydome.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            GL.TexImage2D(TextureTarget.Texture2D, 0, PixelInternalFormat.Rgba, data.Width, data.Height, 0, OpenTK.Graphics.OpenGL.PixelFormat.Bgra, PixelType.UnsignedByte, data.Scan0);
+
+            skydome.UnlockBits(data);
+
+            skydome.Dispose();
+
+            GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
+
+            GL.ActiveTexture(TextureUnit.Texture0);
+
+            GL.BindTexture(TextureTarget.Texture2D, texture);
+
+            GL.Uniform1(uniform_skydome, 0);
         }
 
         private void InitUniform()
