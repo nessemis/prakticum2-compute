@@ -57,6 +57,7 @@ struct material{
 	float emitance;
 	//refractive index;
 	float r_index;
+	int tex;
 };
 
 struct ray{
@@ -179,19 +180,19 @@ vec3 triangleNormal(const triangle triangle, const ray ray){
 
 #define NUM_SPHERES 3
 const sphere spheres[3] = {
-	{vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 0.0, 1.0, 1.0)},
-	{vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 0.0, 1.0, 1.1)},
-	{vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 1.0)}
+	{vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 0.0, 1.0, 1.0 ,0)},
+	{vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 0.0, 1.0, 1.1 ,0)},
+	{vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 1.0 ,0)}
 };
 
-#define NUM_PLANES 0
+#define NUM_PLANES 1
 const plane planes[1] = {
-	{vec3(0, 0, -1), 1.0, material(vec3(1, 1, 1), 0.5, 0.5, 0.0, 1.0)},
+	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 1), 1.0, 0, 0.0, 1.0, 1)},
 };
 
 #define NUM_TRIANGLES 0
 const triangle triangles[1] = {
-	{vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 0.0)}
+	{vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 0.0 ,0)}
 };
 
 #define NUM_LIGHTS 1
@@ -199,7 +200,7 @@ const light lights[1] = {
 	{vec3(0, 0, 5), vec3(10000, 4000, 5000)}
 };
 
-#define NUM_SPOTLIGHTS 0
+#define NUM_SPOTLIGHTS 1
 const spotlight spotlights[1] = {
 	{vec3(-10,0,2),vec3(0,1,-1),vec3(10000, 4000, 5000), -0.76 }
 };
@@ -236,6 +237,14 @@ void intersectWithPlanes (inout ray ray, inout float distance, inout material ma
 			distance = planeDistance;
 			normal = planeNormal(planes[i], ray);
 			material = planes[i].material;
+			if(material.tex  == 1){
+				vec3 pos = ray.origin + ray.direction * distance;
+				if( ( int(mod(pos.x , 2)) == 0 && int(mod(pos.y, 2)) ==0 ) || 
+				( int(mod(pos.x , 2)) == 1 && int(mod(pos.y, 2)) ==1 )){
+					material.color = vec3(0,1,0);
+				}
+				
+			}
 		};
 	};
 };
