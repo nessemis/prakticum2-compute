@@ -21,30 +21,24 @@ namespace GLSLRayTracer
 
         int computeHandle;
 
-
         int uniform_renderDebug;
         int uniform_debugTransformationMatrix;
+
+        //(Simple) matrix which transforms the screen space coordinates such that the camera is positioned at (0, 0, 0) and the direction vector points towards (1, 0, 0).
+        Matrix4 debugMatrix;
 
         int uniform_location;
         int uniform_dBotLeft;
         int uniform_dRight;
         int uniform_dUp;
 
-        Matrix4 debugMatrix;
-
+        //Location of the camera.
         Vector3 location;
 
-        //angles.x is the angle of rotation around the z axis, angles.y is the rotation around the xy plane.
+        //Angles.x is the angle of rotation around the z axis, angles.y is the rotation relative to the xy plane.
         Vector2 rotation;
 
-        bool shaderInvalid;
-
-        bool renderDebug = false;
-
-        Vector3 dBotLeft;
-        Vector3 dRight;
-        Vector3 dUp;
-
+        //The vector to the center of the "plane" in front of the camera relative to the camera.
         Vector3 direction
         {
             get
@@ -53,6 +47,18 @@ namespace GLSLRayTracer
                 return directionVector;
             }
         }
+
+        //Points towards the bottom left corner of the "plane" in front of the camera.
+        Vector3 dBotLeft;
+        //points towards the right/top of the "plane" in front of the camera relative to the bottom left corner.
+        Vector3 dRight;
+        Vector3 dUp;
+
+        //Whether the debugview should be rendered.
+        bool renderDebug = false;
+
+        //Specifies if the uniform variables inside the shader have to be updated.
+        bool shaderInvalid;
 
         public Camera(int computeHandle)
         {
@@ -65,9 +71,25 @@ namespace GLSLRayTracer
             UpdateShader();
         }
 
-        public void Update()
+        private void InitCamera()
         {
-            Input(Keyboard.GetState());
+            location = Vector3.Zero;
+            rotation = new Vector2(0, (float)Math.PI / 2);
+            InitDirections();
+        }
+
+        private void InitDirections()
+        {
+            //sin(x + 1/2pi) = cos(x).
+            dRight = new Vector3((float)-Math.Sin(rotation.X), (float)Math.Cos(rotation.X), 0);
+            //dright is perpendicular to direction and dright, which bot have length 1, therefor there is no need to normalize.
+            dUp = -Vector3.Cross(dRight, direction);
+
+            dRight *= (float)Math.Tan(verticalViewingAngle / 2) * 2;
+
+            dUp *= (float)Math.Tan(verticalViewingAngle / 2) * 2 * ((float)Window.height / Window.width);
+
+            dBotLeft = direction - 1 / 2f * dRight - 1 / 2f * dUp;
         }
 
         private void InitUniform()
@@ -81,33 +103,12 @@ namespace GLSLRayTracer
             uniform_dUp = GL.GetUniformLocation(computeHandle, "dUp");
         }
 
-        private void InitCamera()
-        {
-            location = Vector3.Zero;
-            rotation = new Vector2(0, (float) Math.PI / 2);
-            InitDirections();
-        }
-
-        private void InitDirections()
-        {
-            //sin(x + 1/2pi) = cos(x).
-            dRight = new Vector3((float) -Math.Sin(rotation.X), (float) Math.Cos(rotation.X), 0);
-            //dright is perpendicular to direction with length 1, so we don't need to normalize.
-            dUp = -Vector3.Cross(dRight, direction);
-
-            dRight *= (float)Math.Tan(verticalViewingAngle / 2) * 2;
-
-            dUp *= (float)Math.Tan(verticalViewingAngle / 2) * 2 * ((float)Window.height / Window.width) ;
-
-            dBotLeft = direction - 1/2f * dRight - 1/2f * dUp;
-        }
-
-        private void DebugMatrix()
+        //Updates the debugmatrix
+        private void UpdateDebugMatrix()
         {
             debugMatrix = Matrix4.CreateTranslation(-location);
             debugMatrix *= Matrix4.CreateRotationZ(-rotation.X);
-            debugMatrix *= Matrix4.CreateRotationY(-(rotation.Y - (float) Math.PI / 2));
-
+            debugMatrix *= Matrix4.CreateRotationY(-(rotation.Y - (float)Math.PI / 2));
         }
 
         private void UpdateShader()
@@ -120,12 +121,17 @@ namespace GLSLRayTracer
             GL.Uniform1(uniform_renderDebug, renderDebug ? 1 : 0);
             if (renderDebug)
             {
-                DebugMatrix();
+                UpdateDebugMatrix();
                 GL.UniformMatrix4(uniform_debugTransformationMatrix, false, ref debugMatrix);
             }
         }
 
-        public void Input(KeyboardState keyboard)
+        public void Update()
+        {
+            HandleInput(Keyboard.GetState());
+        }
+
+        private void HandleInput(KeyboardState keyboard)
         {
             if (keyboard[OpenTK.Input.Key.W])
             {
@@ -139,12 +145,12 @@ namespace GLSLRayTracer
             }
             if (keyboard[OpenTK.Input.Key.A])
             {
-                location -= 1/10f * MovementDirectionRight();
+                location -= 1/10f * dRight.Normalized();
                 shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.D])
             {
-                location += 1 / 10f * MovementDirectionRight();
+                location += 1 / 10f * dRight.Normalized();
                 shaderInvalid = true;
             }
             if (keyboard[OpenTK.Input.Key.Q])
@@ -208,13 +214,6 @@ namespace GLSLRayTracer
 
                 shaderInvalid = false;
             }
-        }
-
-        private Vector3 MovementDirectionRight()
-        {
-            Vector3 directionRightVector = Vector3.Cross(direction, new Vector3(0, 0, -1));
-            directionRightVector.Normalize();
-            return directionRightVector;
         }
     }
 }

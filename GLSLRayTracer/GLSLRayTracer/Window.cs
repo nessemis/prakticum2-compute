@@ -19,12 +19,13 @@ namespace GLSLRayTracer
         int computeHandle;
 
         int QuadVBO;
-
         int vPos;
 
+        //referebces to the uniform variables not related to the camera 
         int uniform_windowSize;
+        int uniform_skydome;
 
-        Camera cam;
+        Camera camera;
 
         //We leave the framerate unlocked.
         public Window() : base (width, height, GraphicsMode.Default, "RayTracer")
@@ -38,12 +39,13 @@ namespace GLSLRayTracer
 
             GL.Viewport(0, 0, width, height);
 
-            ReloadShader();
+            InitShader();
 
-            cam = new Camera(computeHandle);
+            camera = new Camera(computeHandle);
         }
 
-        private void ReloadShader()
+        //Initializes the necesarry shaders.
+        private void InitShader()
         {
             int fragmentShader;
             int vertexShader;
@@ -61,15 +63,49 @@ namespace GLSLRayTracer
             BufferQuad();
 
             InitUniform();
-            WriteWindowCoord();
 
-            LoadSkydome();
+            UpdateUniform();
         }
 
-        private void LoadSkydome()
+        //Buffers a quad to the shader which fills the screen.
+        private void BufferQuad()
         {
-            int uniform_skydome = GL.GetUniformLocation(computeHandle, "skydome");
+            float[] quad = new float[3 * 6]
+            {
+                -1f, 1f, 0f,
+                1f, 1f, 0f,
+                1f, -1f, 0f,
+                -1f, 1f, 0f,
+                1f, -1f, 0f,
+                -1f, -1f, 0f
+            };
 
+            QuadVBO = GL.GenBuffer();
+            GL.BindBuffer(BufferTarget.ArrayBuffer, QuadVBO);
+            GL.BufferData(BufferTarget.ArrayBuffer, 6 * 3 * 4, quad, BufferUsageHint.StaticDraw);
+            GL.VertexAttribPointer(vPos, 3, VertexAttribPointerType.Float, false, 12, 0);
+
+        }
+
+        //Initializes the uniform variables inside the shader unrelated to the camera.
+        private void InitUniform()
+        {
+            uniform_skydome = GL.GetUniformLocation(computeHandle, "skydome");
+
+            uniform_windowSize = GL.GetUniformLocation(computeHandle, "windowSize");
+        }
+
+        //Updates the uniform variables to match their corresponding values.
+        private void UpdateUniform()
+        {
+            GL.Uniform2(uniform_windowSize, (float)width, (float)height);
+
+            BufferSkydome();
+        }
+
+        //Buffers the skydome into the shader.
+        private void BufferSkydome()
+        {
             Bitmap skydome = new Bitmap("../../assets/skydome.jpg");
 
             int texture = GL.GenTexture();
@@ -92,50 +128,17 @@ namespace GLSLRayTracer
 
             GL.Uniform1(uniform_skydome, 0);
         }
-
-        private void InitUniform()
-        {
-            uniform_windowSize = GL.GetUniformLocation(computeHandle, "windowSize");
-        }
-
-        private void WriteWindowCoord()
-        {
-            GL.Uniform2(uniform_windowSize, (float) width, (float) height);
-        }
-
-        private void BufferQuad()
-        {
-            float[] quad = new float[3 * 6]
-            {
-                -1f, 1f, 0f,
-                1f, 1f, 0f,
-                1f, -1f, 0f,
-                -1f, 1f, 0f,
-                1f, -1f, 0f,
-                -1f, -1f, 0f
-            };
-
-            QuadVBO = GL.GenBuffer();
-            GL.BindBuffer(BufferTarget.ArrayBuffer, QuadVBO);
-            GL.BufferData(BufferTarget.ArrayBuffer, 6 * 3 * 4, quad, BufferUsageHint.StaticDraw);
-            GL.VertexAttribPointer(vPos, 3, VertexAttribPointerType.Float, false, 12, 0);
-
-        }
-
+        
         protected override void OnUpdateFrame(FrameEventArgs e)
         {
             base.OnUpdateFrame(e);
 
-            cam.Update();
+            camera.Update();
 
             if (Keyboard[Key.Escape])
                 Exit();
-            if (Keyboard[Key.F])
-            {
-                ReloadShader();
-            }
         }
-
+         
         protected override void OnRenderFrame(FrameEventArgs e)
         {
             base.OnRenderFrame(e);
@@ -149,10 +152,7 @@ namespace GLSLRayTracer
             SwapBuffers();
         }
 
-        private void updateShaderCame()
-        {
-        }
-
+        //Loads shadears from files.
         void LoadShader(String name, ShaderType type, int program, out int ID)
         {
             ID = GL.CreateShader(type);

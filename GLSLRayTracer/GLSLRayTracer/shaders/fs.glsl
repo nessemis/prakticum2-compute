@@ -391,8 +391,6 @@ vec3 launchShadowRays(vec3 origin, vec3 incomingDirection, vec3 surfaceNormal){
 		
 		if (angle > 0 && angleSpotlight < spotlights[i].angle)
 		{
-			
-			
 			float angle = dot(originToLight, surfaceNormal);
 			
 			ray shadowRay = ray(origin, originToLight, 1.0, 1.0);
@@ -476,11 +474,11 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 					n2 = reflectedMaterial.r_index;
 				
 				//check for total internal reflection, if yes launch reflectedray.
-				if(sin(acos(cos_i)) > n2 / currentray.r_index && currentray.r_index > n2)
+				if(sqrt(1.0 - cos_i * cos_i) > n2 / currentray.r_index && currentray.r_index > n2)
 					rayBuffer[leastSignificantRay(rayBuffer)] = ray(intersectionLocation,currentray.direction - 2 * dot(currentray.direction, normal) * normal, currentray.intensity * R0, currentray.r_index);
 				else
 				{
-					float cos_t = cos(calcAngleOfRefraction(currentray.r_index, n2, acos(cos_i)));
+					float cos_t = calcAngleOfRefraction(currentray.r_index, n2, cos_i);
 					if(currentray.r_index <= n2)
 						R0 *= calcReflectionCoefficient(currentray.r_index, n2, cos_i);
 					else
