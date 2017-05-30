@@ -37,6 +37,7 @@ struct light{
 };
 
 struct material{
+	//setting color.x = -1 results in a tiled pattern.
 	vec3 color;
 	float diffuse;
 	float reflectivity;
