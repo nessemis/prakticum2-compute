@@ -27,8 +27,6 @@ uniform vec3 dUp;
 
 #define minimumIntensity 0.0001
 
-#define RAY_BUFFER_SIZE 10
-
 #define maxDistance 10000000000.0
 
 #define PI 3.141592654
@@ -36,6 +34,9 @@ uniform vec3 dUp;
 #define RAYS_PER_PIXEL_VERTICAL 1
 
 #define RAYS_PER_PIXEL_HORIZONTAL 1
+
+//taking a lower number will result in an overflow inducing strange artefacts (very strange ones at that).
+#define RAY_BUFFER_SIZE max(RAYS_PER_PIXEL_VERTICAL * RAYS_PER_PIXEL_HORIZONTAL, 10)
 
 //-------------------------------------------------------
 //Primitives.
@@ -75,7 +76,6 @@ struct material{
 
 	//refractive index;
 	float r_index;
-	int texture;
 };
 
 struct sphere{
@@ -88,6 +88,7 @@ struct plane{
 	vec3 normal;
 	float distance;
 	material material;
+	int texture;
 };
 
 struct triangle{
@@ -103,31 +104,32 @@ struct triangle{
 //Scene declarations.
 //-------------------------------------------------------
 
-#define NUM_SPHERES 3
-const sphere spheres[3] = {
-	{ vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 1.0, 0.0, 1.0, 1.0 ,0) },
-	{ vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 1.0, 0.0, 1.0, 1.5 ,0) },
-	{ vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 1.5, 0.0, 0.0, 1.0 ,0) }
+#define NUM_SPHERES 4
+const sphere spheres[4] = {
+	{ vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 1.0, 0.0, 1.0, 1.0) },
+	{ vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 1.0, 0.0, 1.0, 1.5) },
+	{ vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 1.5, 0.0, 0.0, 1.0) },
+	{ vec3(15, 0, 3.0), 16.0, material(vec3(1, 1, 1), 0.0, 1.5, 1.0, 0.0, 1.0) }
 };
 
 #define NUM_PLANES 1
 const plane planes[1] = {
-	{ vec3(0, 0, -1), 1.0, material(vec3(1, 0, 1), 1.0, 1.0, 0, 0.0, 1.0, 1) },
+	{ vec3(0, 0, -1), 1.0, material(vec3(1, 0, 1), 1.0, 1.0, 0.3, 0.0, 1.0), 1 }
 };
 
 #define NUM_TRIANGLES 0
 const triangle triangles[1] = {
-	{ vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 1.0, 0.0, 0.0, 0.0 ,0) }
+	{ vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 1.0, 0.0, 0.0, 0.0) }
 };
 
 #define NUM_LIGHTS 1
 const light lights[1] = {
-	{ vec3(0, 0, 5), vec3(50, 50, 50) }
+	{ vec3(0, 0, 10), vec3(100, 100, 100) }
 };
 
 #define NUM_SPOTLIGHTS 0
 const spotlight spotlights[1] = {
-	{ vec3(3,0,10) ,vec3(100, 100, 100), vec3(0,0,-1), PI / 4 }
+	{ vec3(-20, 0.0, 10) ,vec3(100, 100, 100), normalize(vec3(4.0, 0.0, -1.0)), PI / 4 }
 };
 
 //-------------------------------------------------------
@@ -218,7 +220,7 @@ vec3 triangleNormal(const triangle triangle, const ray ray){
 //Scene intersections.
 //-------------------------------------------------------
 
-void intersectWithSpheres (inout ray ray, inout float distance, inout material material, inout vec3 normal){
+void intersectWithSpheres (const ray ray, inout float distance, inout material material, inout vec3 normal){
 	for (int i = 0; i < NUM_SPHERES; i++) {
 		float sphereDistance = intersectSphere(ray, spheres[i]);
 		if (sphereDistance > epsilon && (sphereDistance < distance)){
@@ -229,26 +231,29 @@ void intersectWithSpheres (inout ray ray, inout float distance, inout material m
 	};
 };
 
-void intersectWithPlanes (inout ray ray, inout float distance, inout material material, inout vec3 normal){
+void intersectWithPlanes (const ray ray, inout float distance, inout material material, inout vec3 normal){
 	for (int i = 0; i < NUM_PLANES; i++) {
 		float planeDistance = intersectPlane(ray, planes[i]);
 		if (planeDistance > epsilon && (planeDistance < distance)){
 			distance = planeDistance;
 			normal = planeNormal(planes[i], ray);
 			material = planes[i].material;
-			if(material.texture  == 1){
+			if(planes[i].texture  == 1){
+				//Unfortunately we failed to come up with a method working for all orientations, as therefor this produces square rectangles when the plane has normal vector vec3(0, 0, -1) or vec3(0, 0, 1).
 				vec3 pos = ray.origin + ray.direction * distance;
 				if( ( int(mod(pos.x , 2)) == 0 && int(mod(pos.y, 2)) ==0 ) || 
 				( int(mod(pos.x , 2)) == 1 && int(mod(pos.y, 2)) ==1 )){
-					material.color = vec3(0,1,0);
+					material.color = vec3(1, 1, 1);
 				}
-				
+				else {
+					material.color = vec3(0, 0, 0);
+				}
 			}
 		};
 	};
 };
 
-void intersectWithTriangles (inout ray ray, inout float distance, inout material material, inout vec3 normal){
+void intersectWithTriangles (const ray ray, inout float distance, inout material material, inout vec3 normal){
 	for (int i = 0; i < NUM_TRIANGLES; i++) {
 		float triangleDistance = intersectTriangle(ray, triangles[i]);
 		if (triangleDistance > epsilon && triangleDistance < distance){
@@ -259,7 +264,11 @@ void intersectWithTriangles (inout ray ray, inout float distance, inout material
 	};
 };
 
-bool intersectWithPlanesShadow(inout ray ray, const float distance) {
+//-------------------------------------------------------
+//Scene shadow ray intersections.
+//-------------------------------------------------------
+
+bool intersectWithPlanesShadow(const ray ray, const float distance) {
 	for (int i = 0; i < NUM_PLANES; i++) {
 		float planeDistance = intersectPlane(ray, planes[i]);
 		if (planeDistance > epsilon && (planeDistance < distance)) {
@@ -269,7 +278,7 @@ bool intersectWithPlanesShadow(inout ray ray, const float distance) {
 	return false;
 };
 
-bool intersectWithTrianglesShadow(inout ray ray, const float distance) {
+bool intersectWithTrianglesShadow(const ray ray, const float distance) {
 	for (int i = 0; i < NUM_TRIANGLES; i++) {
 		float triangleDistance = intersectTriangle(ray, triangles[i]);
 		if (triangleDistance > epsilon && triangleDistance < distance) {
@@ -279,11 +288,7 @@ bool intersectWithTrianglesShadow(inout ray ray, const float distance) {
 	return false;
 };
 
-//-------------------------------------------------------
-//Scene shadow ray intersections.
-//-------------------------------------------------------
-
-bool intersectWithSpheresShadow(inout ray ray, inout float distance) {
+bool intersectWithSpheresShadow(const ray ray, const float distance) {
 	for (int i = 0; i < NUM_SPHERES; i++) {
 		float sphereDistance = intersectSphere(ray, spheres[i]);
 		if (sphereDistance > epsilon && (sphereDistance < distance)) {
@@ -341,7 +346,7 @@ int leastSignificantRay(const ray rayBuffer[RAY_BUFFER_SIZE]){
 //-------------------------------------------------------
 
 //Intersects a ray with the scene
-void intersectWithScene(inout ray ray, inout float distance, inout vec3 normal, inout material reflectedMaterial)
+void intersectWithScene(const ray ray, inout float distance, inout vec3 normal, inout material reflectedMaterial)
 {
 	intersectWithSpheres(ray, distance, reflectedMaterial, normal);
 		
@@ -351,7 +356,7 @@ void intersectWithScene(inout ray ray, inout float distance, inout vec3 normal, 
 };
 
 //Intersects a shadow ray with the scene
-bool intersectWithSceneShadowRay(inout ray ray, inout float distance)
+bool intersectWithSceneShadowRay(const ray ray, const float distance)
 {
 	if(intersectWithSpheresShadow(ray, distance))
 		return true;
@@ -359,7 +364,50 @@ bool intersectWithSceneShadowRay(inout ray ray, inout float distance)
 		return true;
 	else
 		return intersectWithTrianglesShadow(ray, distance);
-}
+};
+
+//Intersects a ray with the scene
+vec3 intersectWithSceneLights(inout ray lightRay)
+{
+	vec3 calculatedColor = vec3(0, 0, 0);
+
+	for (int i = 0; i < NUM_LIGHTS; i++) {
+		vec3 rayOriginToLight = lights[i].location - lightRay.origin;
+		float distance = length(rayOriginToLight);
+		if (!intersectWithSceneShadowRay(lightRay, distance))
+		{
+			float adjacent = dot(rayOriginToLight, lightRay.direction);
+			vec3 oppositeToLightOrigin = rayOriginToLight - adjacent * lightRay.direction;
+			float opposite = dot(oppositeToLightOrigin, oppositeToLightOrigin);
+			float intensity = distance * distance;
+			if (adjacent > 0)
+				intensity *= opposite;
+			else
+				intensity *= intensity;
+			if (intensity > 0)
+				calculatedColor += lights[i].color / intensity;
+		}
+	};
+
+	for (int i = 0; i < NUM_SPOTLIGHTS; i++) {
+		vec3 rayOriginToLight = lights[i].location - lightRay.origin;
+		float distance = length(rayOriginToLight);
+
+		float spotlightToIntersectionAngle = acos(-dot(rayOriginToLight, spotlights[i].direction));
+
+		if (spotlightToIntersectionAngle < spotlights[i].angle && !intersectWithSceneShadowRay(ray(lightRay.origin, rayOriginToLight / distance, 1.0, 1.0), distance))
+		{
+			float adjacent = dot(rayOriginToLight, lightRay.direction);
+			vec3 oppositeToLightOrigin = rayOriginToLight - adjacent * lightRay.direction;
+			float opposite = dot(oppositeToLightOrigin, oppositeToLightOrigin);
+			float intensity = (opposite + adjacent * adjacent) * opposite;
+			if (intensity > 0)
+				calculatedColor += lights[i].color / intensity;
+		}
+	};
+
+	return calculatedColor;
+};
 
 //Calculates the shadow rays for any given point. 
 vec3 intersectShadowRays(vec3 origin, vec3 direction, float specularHardness, vec3 surfaceNormal){
@@ -452,7 +500,7 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 
 	for (int i = 0; i < RAYS_PER_PIXEL_VERTICAL; i++)
 		for (int j = 0; j < RAYS_PER_PIXEL_HORIZONTAL; j++)
-			rayBuffer[i * j + j] = ray(primaryRay.origin, primaryRay.direction + (i / (windowSize.x * RAYS_PER_PIXEL_VERTICAL)) * dRight + (j / (windowSize.y * RAYS_PER_PIXEL_VERTICAL)) * dUp, primaryRay.intensity / (RAYS_PER_PIXEL_VERTICAL * RAYS_PER_PIXEL_HORIZONTAL), primaryRay.r_index);
+			rayBuffer[i * RAYS_PER_PIXEL_VERTICAL + j] = ray(primaryRay.origin, primaryRay.direction + (i / (windowSize.x * RAYS_PER_PIXEL_VERTICAL)) * dRight + (j / (windowSize.y * RAYS_PER_PIXEL_VERTICAL)) * dUp, primaryRay.intensity / (RAYS_PER_PIXEL_VERTICAL * RAYS_PER_PIXEL_HORIZONTAL), primaryRay.r_index);
 	
     rayBuffer[0] = primaryRay;
 	
@@ -472,6 +520,8 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 		currentray = rayBuffer[index];
 		
 		rayBuffer[index].intensity = 0;
+
+		inputRayColor += intersectWithSceneLights(currentray) * currentray.intensity;
 		
 		intersectWithScene(currentray, distance, normal, reflectedMaterial);
 								
@@ -485,7 +535,7 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 			};
 			
 			if(reflectedMaterial.reflectivity > epsilon){
-				rayBuffer[leastSignificantRay(rayBuffer)] = ray(intersectionLocation, currentray.direction - 2 * dot(currentray.direction, normal) * normal, currentray.intensity, currentray.r_index);
+				rayBuffer[leastSignificantRay(rayBuffer)] = ray(intersectionLocation, currentray.direction - 2 * dot(currentray.direction, normal) * normal, currentray.intensity * reflectedMaterial.reflectivity, currentray.r_index);
 			};
 			
 			if(reflectedMaterial.emitance > epsilon)
