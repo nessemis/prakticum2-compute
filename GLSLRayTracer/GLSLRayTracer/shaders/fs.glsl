@@ -33,6 +33,10 @@ uniform vec3 dUp;
 
 #define PI 3.141592654
 
+#define RAYS_PER_PIXEL_VERTICAL 1
+
+#define RAYS_PER_PIXEL_HORIZONTAL 1
+
 //-------------------------------------------------------
 //Primitives.
 //-------------------------------------------------------
@@ -435,6 +439,13 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 	vec3 intersectionLocation;
 		
 	ray rayBuffer[RAY_BUFFER_SIZE];
+
+	for (int i = RAYS_PER_PIXEL_VERTICAL * RAYS_PER_PIXEL_HORIZONTAL; i < RAY_BUFFER_SIZE; i++)
+		rayBuffer[i] = ray(vec3(0, 0, 0), vec3(0, 0, 0), 0.0, 0.0);
+
+	for (int i = 0; i < RAYS_PER_PIXEL_VERTICAL; i++)
+		for (int j = 0; j < RAYS_PER_PIXEL_HORIZONTAL; j++)
+			rayBuffer[i * j + j] = ray(primaryRay.origin, primaryRay.direction + (i / (windowSize.x * RAYS_PER_PIXEL_VERTICAL)) * dRight + (j / (windowSize.y * RAYS_PER_PIXEL_VERTICAL)) * dUp, primaryRay.intensity / (RAYS_PER_PIXEL_VERTICAL * RAYS_PER_PIXEL_HORIZONTAL), primaryRay.r_index);
 	
     rayBuffer[0] = primaryRay;
 	
