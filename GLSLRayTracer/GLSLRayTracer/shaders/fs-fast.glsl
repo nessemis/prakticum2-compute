@@ -72,7 +72,7 @@ const sphere spheres[NUM_SPHERES] = {
 
 #define NUM_PLANES 3
 const plane planes[NUM_PLANES] = {
-	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 0), 1.0, 0.0)},
+	{vec3(0, 0, -1), 1.0, material(vec3(-1, 0, 0), 1.0, 0.0)},
 	{vec3(0, -1, 0), 4.0, material(vec3(0, 1, 0), 1.0, 0.0)},
 	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.0)}
 };
@@ -142,6 +142,14 @@ void intersectWithPlanes (const ray ray, inout float distance, inout material ma
 			distance = planeDistance;
 			normal = planeNormal(planes[i], ray);
 			material = planes[i].material;
+			if(material.color.x  < 0){
+				vec3 pos = ray.origin + ray.direction * distance;
+				if( ( int(mod(pos.x , 2)) == 0 && int(mod(pos.y, 2)) ==0 ) || 
+				( int(mod(pos.x , 2)) == 1 && int(mod(pos.y, 2)) ==1 )){
+					material.color = vec3(1,1,1);
+				}
+				
+			}
 		};
 	};
 };

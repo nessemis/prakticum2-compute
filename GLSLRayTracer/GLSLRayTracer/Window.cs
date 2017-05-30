@@ -124,8 +124,6 @@ namespace GLSLRayTracer
 
             skydome.Dispose();
 
-           // GL.GenerateMipmap(GenerateMipmapTarget.Texture2D);
-           // GL.ActiveTexture(TextureUnit.Texture0);
             GL.Uniform1(uniform_skydome, 0);
 
         }
