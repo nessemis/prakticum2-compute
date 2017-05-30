@@ -192,18 +192,18 @@ bool intersectWithSceneShadowRay(const ray ray, const float distance)
 	return intersectWithPlanesShadow(ray, distance);
 }
 
-vec3 launchShadowRays(const vec3 origin, const vec3 surfaceNormal){
+vec3 intersectShadowRays(const vec3 origin, const vec3 surfaceNormal){
 	vec3 calculatedColor = vec3(0, 0, 0);
 	
 	vec3 originToLight;
 	float distanceToLight;
-	
 	
 	for (int i = 0; i < NUM_LIGHTS; i++){
 		originToLight = lights[i].location - origin;
 		
 		float angle = dot(originToLight, surfaceNormal);
 		
+		//A dot product is very cheap, therefore it's cheaper to do two dot products than risk calculating a root too much.
 		if (angle > 0)
 		{
 			distanceToLight = sqrt(dot(originToLight, originToLight));
@@ -213,6 +213,7 @@ vec3 launchShadowRays(const vec3 origin, const vec3 surfaceNormal){
 			
 			ray shadowRay = ray(origin, originToLight, 1.0);
 					
+			//if no valid inteserction was found, proceed to add the light emitted by the light source to the diffuse color.
 			if (!intersectWithSceneShadowRay(shadowRay, distanceToLight)){
 				updateIntensity(shadowRay, distanceToLight);
 				shadowRay.intensity *= angle;
@@ -225,6 +226,7 @@ vec3 launchShadowRays(const vec3 origin, const vec3 surfaceNormal){
 	return calculatedColor;
 };
 
+//Because glsl doesn't allow recursion, a loop is needed to calculate the color.
 vec3 intersectWithSceneIterator(ray primaryRay)
 {
 	vec3 inputRayColor = vec3(0, 0, 0);
@@ -248,7 +250,7 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 			intersectionLocation = primaryRay.origin + primaryRay.direction * distance;
 			
 			if(reflectedMaterial.diffuse > epsilon){
-				vec3 shadowColor = launchShadowRays(primaryRay.origin + primaryRay.direction * distance, normal);
+				vec3 shadowColor = intersectShadowRays(primaryRay.origin + primaryRay.direction * distance, normal);
 				inputRayColor += reflectedMaterial.diffuse * shadowColor * primaryRay.intensity * reflectedMaterial.color;
 			};
 									
@@ -387,10 +389,9 @@ vec4 getRayColor(ray ray)
 {
 	vec3 color = intersectWithSceneIterator(ray);
 
-	return vec4(color.x, color.y, color.z, 1.0);
+	return vec4(color, 1.0);
 };
 
-//when the shader program works, try to remove the vec2 to ivec2 conversion.
 void main(){
 	vec4 pixelLocation = gl_FragCoord;
 	vec2 pixelPosition = vec2(pixelLocation.x / windowSize.x, pixelLocation.y / windowSize.y);
