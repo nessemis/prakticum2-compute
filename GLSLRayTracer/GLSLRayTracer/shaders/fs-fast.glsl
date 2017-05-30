@@ -205,10 +205,12 @@ vec3 intersectShadowRays(const vec3 origin, const vec3 surfaceNormal){
 	vec3 originToLight;
 	float distanceToLight;
 	
+	float angle;
+
 	for (int i = 0; i < NUM_LIGHTS; i++){
 		originToLight = lights[i].location - origin;
 		
-		float angle = dot(originToLight, surfaceNormal);
+		angle = dot(originToLight, surfaceNormal);
 		
 		//A dot product is very cheap, therefore it's cheaper to do two dot products than risk calculating a root too much.
 		if (angle > 0)

@@ -29,13 +29,22 @@ uniform vec3 dUp;
 
 #define RAY_BUFFER_SIZE 10
 
-#define maxDistance 1000000.0
+#define maxDistance 10000000000.0
 
 #define PI 3.141592654
 
 //-------------------------------------------------------
 //Primitives.
 //-------------------------------------------------------
+
+struct ray {
+	vec3 origin;
+	vec3 direction;
+	float intensity;
+
+	//refractive index of the material the ray is currently traveling in.
+	float r_index;
+};
 
 struct light{
 	vec3 location;
@@ -44,32 +53,28 @@ struct light{
 
 struct spotlight{
     vec3 location;
-    vec3 direction;
 	vec3 color;
-    float angle;
+	vec3 direction;
 
+	//In cos(angle).
+    float angle;
 };
 
 struct material{
 	vec3 color;
 	float diffuse;
 	float reflectivity;
+
+	//amount the refraction matters to the total ray definition.
 	float emitance;
+
 	//refractive index;
 	float r_index;
-	int tex;
-};
-
-struct ray{
-	vec3 origin;
-	vec3 direction;
-	float intensity;
-	float r_index;
+	int texture;
 };
 
 struct sphere{
 	vec3 location;
-	//insert the radius squared in this field.
 	float radius;
 	material material;
 };
@@ -82,12 +87,42 @@ struct plane{
 
 struct triangle{
 	vec3 v1;
-	
 	//edges from v1 to vertex ei.
 	vec3 e2;
 	vec3 e3;
-	
+
 	material material;
+};
+
+//-------------------------------------------------------
+//Scene declarations.
+//-------------------------------------------------------
+
+#define NUM_SPHERES 3
+const sphere spheres[3] = {
+	{ vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 0.0, 1.0, 1.0 ,0) },
+	{ vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 0.0, 1.0, 1.5 ,0) },
+	{ vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 1.0 ,0) }
+};
+
+#define NUM_PLANES 1
+const plane planes[1] = {
+	{ vec3(0, 0, -1), 1.0, material(vec3(1, 0, 1), 1.0, 0, 0.0, 1.0, 1) },
+};
+
+#define NUM_TRIANGLES 0
+const triangle triangles[1] = {
+	{ vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 0.0 ,0) }
+};
+
+#define NUM_LIGHTS 0
+const light lights[1] = {
+	{ vec3(0, 0, 5), vec3(10000, 4000, 5000) }
+};
+
+#define NUM_SPOTLIGHTS 1
+const spotlight spotlights[1] = {
+	{ vec3(3,0,10) ,vec3(10000, 4000, 5000), vec3(0,0,-1), PI / 4 }
 };
 
 //-------------------------------------------------------
@@ -151,7 +186,7 @@ float intersectTriangle(const ray ray, const triangle triangle){
 
 vec3 sphereNormal(const sphere sphere, const ray ray, const float distance){
 	vec3 rayOriginToSphere = sphere.location - ray.origin;
-	vec3 normal = (distance * ray.direction - rayOriginToSphere)/sphere.radius;
+	vec3 normal = (distance * ray.direction - rayOriginToSphere)/sqrt(sphere.radius);
 	float adjacent = dot(rayOriginToSphere, ray.direction);
 	if(dot(rayOriginToSphere, rayOriginToSphere) - sphere.radius < epsilon && adjacent > 0)
 		return -normal;
@@ -175,37 +210,6 @@ vec3 triangleNormal(const triangle triangle, const ray ray){
 }
 
 //-------------------------------------------------------
-//Scene declarations.
-//-------------------------------------------------------
-
-#define NUM_SPHERES 3
-const sphere spheres[3] = {
-	{vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 0.0, 1.0, 1.0 ,0)},
-	{vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 0.0, 1.0, 1.1 ,0)},
-	{vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 1.0 ,0)}
-};
-
-#define NUM_PLANES 1
-const plane planes[1] = {
-	{vec3(0, 0, -1), 1.0, material(vec3(1, 0, 1), 1.0, 0, 0.0, 1.0, 1)},
-};
-
-#define NUM_TRIANGLES 0
-const triangle triangles[1] = {
-	{vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 0.0 ,0)}
-};
-
-#define NUM_LIGHTS 1
-const light lights[1] = {
-	{vec3(0, 0, 5), vec3(10000, 4000, 5000)}
-};
-
-#define NUM_SPOTLIGHTS 1
-const spotlight spotlights[1] = {
-	{vec3(-10,0,2),vec3(0,1,-1),vec3(10000, 4000, 5000), -0.76 }
-};
-
-//-------------------------------------------------------
 //Scene intersections.
 //-------------------------------------------------------
 
@@ -220,16 +224,6 @@ void intersectWithSpheres (inout ray ray, inout float distance, inout material m
 	};
 };
 
-bool intersectWithSpheresShadow (inout ray ray, inout float distance){
-	for (int i = 0; i < NUM_SPHERES; i++) {
-		float sphereDistance = intersectSphere(ray, spheres[i]);
-		if (sphereDistance > epsilon && (sphereDistance < distance)){
-			return true;
-		};
-	};
-	return false;
-};
-
 void intersectWithPlanes (inout ray ray, inout float distance, inout material material, inout vec3 normal){
 	for (int i = 0; i < NUM_PLANES; i++) {
 		float planeDistance = intersectPlane(ray, planes[i]);
@@ -237,7 +231,7 @@ void intersectWithPlanes (inout ray ray, inout float distance, inout material ma
 			distance = planeDistance;
 			normal = planeNormal(planes[i], ray);
 			material = planes[i].material;
-			if(material.tex  == 1){
+			if(material.texture  == 1){
 				vec3 pos = ray.origin + ray.direction * distance;
 				if( ( int(mod(pos.x , 2)) == 0 && int(mod(pos.y, 2)) ==0 ) || 
 				( int(mod(pos.x , 2)) == 1 && int(mod(pos.y, 2)) ==1 )){
@@ -247,16 +241,6 @@ void intersectWithPlanes (inout ray ray, inout float distance, inout material ma
 			}
 		};
 	};
-};
-
-bool intersectWithPlanesShadow (inout ray ray, const float distance){
-	for (int i = 0; i < NUM_PLANES; i++) {
-		float planeDistance = intersectPlane(ray, planes[i]);
-		if (planeDistance > epsilon && (planeDistance < distance)){
-			return true;
-		};
-	};
-	return false;
 };
 
 void intersectWithTriangles (inout ray ray, inout float distance, inout material material, inout vec3 normal){
@@ -270,15 +254,40 @@ void intersectWithTriangles (inout ray ray, inout float distance, inout material
 	};
 };
 
-bool intersectWithTrianglesShadow (inout ray ray, const float distance){
-	for (int i = 0; i < NUM_TRIANGLES; i++) {
-		float triangleDistance = intersectTriangle(ray, triangles[i]);
-		if (triangleDistance > epsilon && triangleDistance < distance){
+bool intersectWithPlanesShadow(inout ray ray, const float distance) {
+	for (int i = 0; i < NUM_PLANES; i++) {
+		float planeDistance = intersectPlane(ray, planes[i]);
+		if (planeDistance > epsilon && (planeDistance < distance)) {
 			return true;
 		};
 	};
 	return false;
 };
+
+bool intersectWithTrianglesShadow(inout ray ray, const float distance) {
+	for (int i = 0; i < NUM_TRIANGLES; i++) {
+		float triangleDistance = intersectTriangle(ray, triangles[i]);
+		if (triangleDistance > epsilon && triangleDistance < distance) {
+			return true;
+		};
+	};
+	return false;
+};
+
+//-------------------------------------------------------
+//Scene shadow ray intersections.
+//-------------------------------------------------------
+
+bool intersectWithSpheresShadow(inout ray ray, inout float distance) {
+	for (int i = 0; i < NUM_SPHERES; i++) {
+		float sphereDistance = intersectSphere(ray, spheres[i]);
+		if (sphereDistance > epsilon && (sphereDistance < distance)) {
+			return true;
+		};
+	};
+	return false;
+};
+
 
 //-------------------------------------------------------
 //Utility functions.
@@ -326,6 +335,7 @@ int leastSignificantRay(const ray rayBuffer[RAY_BUFFER_SIZE]){
 //Scene functions.
 //-------------------------------------------------------
 
+//Intersects a ray with the scene
 void intersectWithScene(inout ray ray, inout float distance, inout vec3 normal, inout material reflectedMaterial)
 {
 	intersectWithSpheres(ray, distance, reflectedMaterial, normal);
@@ -335,6 +345,7 @@ void intersectWithScene(inout ray ray, inout float distance, inout vec3 normal, 
 	intersectWithTriangles(ray, distance, reflectedMaterial, normal);
 };
 
+//Intersects a shadow ray with the scene
 bool intersectWithSceneShadowRay(inout ray ray, inout float distance)
 {
 	if(intersectWithSpheresShadow(ray, distance))
@@ -345,23 +356,27 @@ bool intersectWithSceneShadowRay(inout ray ray, inout float distance)
 		return intersectWithTrianglesShadow(ray, distance);
 }
 
-vec3 launchShadowRays(vec3 origin, vec3 incomingDirection, vec3 surfaceNormal){
+//Calculates the shadow rays for any given point. 
+vec3 intersectShadowRays(vec3 origin, vec3 surfaceNormal){
 	vec3 calculatedColor = vec3(0, 0, 0);
 	
 	vec3 originToLight;
 	float distanceToLight;
 	
+	float angle;
+
 	for (int i = 0; i < NUM_LIGHTS; i++){
 		originToLight = lights[i].location - origin;
 		
-		float angle = dot(originToLight, surfaceNormal);
+		angle = dot(originToLight, surfaceNormal);
 		
+		//A dot product is very cheap, therefore it's cheaper to do two dot products than risk calculating a root too much.
 		if (angle > 0)
 		{
 			distanceToLight = sqrt(dot(originToLight, originToLight));
 			originToLight /= distanceToLight;
 			
-			float angle = dot(originToLight, surfaceNormal);
+			angle = dot(originToLight, surfaceNormal);
 			
 			ray shadowRay = ray(origin, originToLight, 1.0, 1.0);
 					
@@ -375,42 +390,39 @@ vec3 launchShadowRays(vec3 origin, vec3 incomingDirection, vec3 surfaceNormal){
 		}
 	}
 	
-	for (int i = 0; i < NUM_SPOTLIGHTS; i++){
+	for (int i = 0; i < NUM_SPOTLIGHTS; i++) {
 		originToLight = spotlights[i].location - origin;
-		
-		float angle = dot(originToLight, surfaceNormal);
-		
-		float dirdis = sqrt(dot(spotlights[i].direction,spotlights[i].direction));
-        vec3 dir = spotlights[i].direction/dirdis;
-		
-		distanceToLight = sqrt(dot(originToLight, originToLight));
-			originToLight /= distanceToLight;
-		
-		float angleSpotlight =  dot( originToLight , dir);
-		
-		
-		if (angle > 0 && angleSpotlight < spotlights[i].angle)
+
+		angle = dot(originToLight, surfaceNormal);
+
+		if (angle > 0)
 		{
-			float angle = dot(originToLight, surfaceNormal);
-			
-			ray shadowRay = ray(origin, originToLight, 1.0, 1.0);
-					
-			if (!intersectWithSceneShadowRay(shadowRay, distanceToLight)){
-				updateIntensity(shadowRay, distanceToLight);
-				shadowRay.intensity *= angle;
-				
-				updateIntensity(shadowRay, distanceToLight);
-				calculatedColor +=  spotlights[i].color * shadowRay.intensity;
+			distanceToLight = sqrt(dot(originToLight, originToLight));
+			originToLight /= distanceToLight;
+
+			float spotlightToIntersectionAngle = acos(-dot(originToLight, spotlights[i].direction));
+
+			if (spotlightToIntersectionAngle < spotlights[i].angle)
+			{
+				angle = dot(originToLight, surfaceNormal);
+
+				ray shadowRay = ray(origin, originToLight, 1.0, 1.0);
+
+				if (!intersectWithSceneShadowRay(shadowRay, distanceToLight)) {
+					updateIntensity(shadowRay, distanceToLight);
+					shadowRay.intensity *= angle;
+
+					updateIntensity(shadowRay, distanceToLight);
+					calculatedColor += spotlights[i].color * shadowRay.intensity;
+				}
 			}
 		}
 	}
-	
-   
+
 	return calculatedColor;
 };
 
-
-
+//Because glsl doesn't allow recursion, a loop is needed to calculate the color.
 vec3 intersectWithSceneIterator(ray primaryRay)
 {
 	vec3 inputRayColor = vec3(0, 0, 0);
@@ -423,10 +435,6 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 	vec3 intersectionLocation;
 		
 	ray rayBuffer[RAY_BUFFER_SIZE];
-	
-	for(int i = 0; i < RAY_BUFFER_SIZE; i++){
-		rayBuffer[i] = ray(vec3(0, 0, 0), vec3(0, 0, 0), 0, 0);
-	}
 	
     rayBuffer[0] = primaryRay;
 	
@@ -454,12 +462,11 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 			intersectionLocation = currentray.origin + currentray.direction * distance;
 			
 			if(reflectedMaterial.diffuse > epsilon){
-				vec3 shadowColor = launchShadowRays(currentray.origin + currentray.direction * distance, currentray.direction, normal);
+				vec3 shadowColor = intersectShadowRays(currentray.origin + currentray.direction * distance, normal);
 				inputRayColor += reflectedMaterial.diffuse * shadowColor * currentray.intensity * reflectedMaterial.color;
 			};
 			
 			if(reflectedMaterial.reflectivity > epsilon){
-				rayBuffer[index] = ray(intersectionLocation, currentray.direction - 2 * dot(currentray.direction, normal) * normal, currentray.intensity * reflectedMaterial.reflectivity, currentray.r_index);
 			};
 			
 			if(reflectedMaterial.emitance > epsilon)
@@ -506,45 +513,48 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 //Debug functions.
 //-------------------------------------------------------
 
-bool intersectWithVector(vec2 pixelPos, vec2 rayOrigin, vec2 screen_space_intersection){
-	vec2 transPixelPos = pixelPos - rayOrigin;
+//Intersects a pixel in screen space.
+bool intersectWithVector(vec2 pixelPosition, vec2 rayOrigin, vec2 screen_space_intersection) {
+	vec2 rayOriginToPixelPosition = pixelPosition - rayOrigin;
 	vec2 rayIntersectDir = screen_space_intersection - rayOrigin;
-	
-	float dot_product = dot(normalize(transPixelPos), rayIntersectDir);
-	if(0 < dot_product && length(transPixelPos) < dot_product){
-		float dot_product_2 = dot(transPixelPos, normalize(rayIntersectDir));
-		float cross_product = dot(transPixelPos, transPixelPos) - dot_product_2 * dot_product_2;
-		if(cross_product < 0.0001)
+
+	float dot_product = dot(normalize(rayOriginToPixelPosition), rayIntersectDir);
+	if (0 < dot_product && length(rayOriginToPixelPosition) < dot_product) {
+		float dot_product_2 = dot(rayOriginToPixelPosition, normalize(rayIntersectDir));
+		float cross_product = dot(rayOriginToPixelPosition, rayOriginToPixelPosition) - dot_product_2 * dot_product_2;
+		if (cross_product < 0.0001)
 			return true;
 	}
 	return false;
 }
 
-void intersectDebugShadowRay(vec2 pixelPos, vec3 intersectLoc, vec3 sufaceNorm, out bool inShadow, out bool inShadowHit){
+//Intersects shadow rays with the scene. inShadow = true if the pixelPosition is inside the shadowRay, inShadowHit returns true if both inShadow and the shadow ray hit an object.
+//This function requires a dedicated debug function because inserting a handle inside the original function would result in performance loss.
+void intersectDebugShadowRay(vec2 pixelPosition, vec3 intersectLocaction, vec3 sufaceNorm, out bool inShadow, out bool inShadowHit) {
 	vec3 originToLight;
 	float distanceToLight;
-	
+
 	inShadow = false;
 	inShadowHit = false;
-	
-	for (int i = 0; i < NUM_LIGHTS; i++){
-		originToLight = lights[i].location - intersectLoc;
-		
+
+	for (int i = 0; i < NUM_LIGHTS; i++) {
+		originToLight = lights[i].location - intersectLocaction;
+
 		distanceToLight = sqrt(dot(originToLight, originToLight));
 
-		if(distanceToLight < 100 && intersectWithVector(pixelPos, vec2(debugTransformationMatrix * vec4(intersectLoc, 1.0)), vec2(debugTransformationMatrix * vec4(lights[i].location, 1.0))))
+		if (distanceToLight < 100 && intersectWithVector(pixelPosition, vec2(debugTransformationMatrix * vec4(intersectLocaction, 1.0)), vec2(debugTransformationMatrix * vec4(lights[i].location, 1.0))))
 		{
 			inShadow = true;
-			
+
 			float angle = dot(originToLight, sufaceNorm);
-		
+
 			if (angle > 0)
 			{
 				originToLight /= distanceToLight;
-							
-				ray shadowRay = ray(intersectLoc, originToLight, 1.0, 1.0);
-										 
-				if (intersectWithSceneShadowRay(shadowRay, distanceToLight)){
+
+				ray shadowRay = ray(intersectLocaction, originToLight, 1.0, 1.0);
+
+				if (intersectWithSceneShadowRay(shadowRay, distanceToLight)) {
 					inShadowHit = true;
 					return;
 				}
@@ -553,47 +563,51 @@ void intersectDebugShadowRay(vec2 pixelPos, vec3 intersectLoc, vec3 sufaceNorm, 
 	}
 }
 
-void intersectDebugRay(ray primaryRay, vec2 pixelDirection, out bool intersection, out vec3 color){
-	vec3 normal;
+//Intersects ray with the scene.
+//This function requires a dedicated debug function because inserting a handle inside the original function would result in performance loss.
+void intersectDebugRay(ray primaryRay, vec2 pixelDirection, out bool intersection, out vec3 color) {
+	vec3 intersectionNormal;
 	material reflectedMaterial;
 	float distance = maxDistance;
-	
+
 	intersection = false;
-							
-	intersectWithScene(primaryRay, distance, normal, reflectedMaterial);
-	
-	vec2 screen_space_ray_origin = vec2(debugTransformationMatrix * vec4(primaryRay.origin, 1.0));
-	
-	vec2 screen_space_intersection = vec2(debugTransformationMatrix * vec4((distance * primaryRay.direction + primaryRay.origin), 1.0));
-	
-	if(intersectWithVector(pixelDirection, screen_space_ray_origin, screen_space_intersection)){
+
+	intersectWithScene(primaryRay, distance, intersectionNormal, reflectedMaterial);
+
+	vec2 screenSpaceRayOrigin = vec2(debugTransformationMatrix * vec4(primaryRay.origin, 1.0));
+
+	vec2 screenSpaceIntersection = vec2(debugTransformationMatrix * vec4((distance * primaryRay.direction + primaryRay.origin), 1.0));
+
+	if (intersectWithVector(pixelDirection, screenSpaceRayOrigin, screenSpaceIntersection)) {
 		intersection = true;
 		color = vec3(1.0, 1.0, 0.0);
 	}
-	else if(reflectedMaterial.diffuse > 0){
+
+	else if (reflectedMaterial.diffuse > 0) {
 		bool inShadow;
 		bool inShadowHit;
-		
-		intersectDebugShadowRay(pixelDirection, distance * primaryRay.direction + primaryRay.origin, normal, inShadow, inShadowHit);
-		
-		if(inShadow)
+
+		intersectDebugShadowRay(pixelDirection, distance * primaryRay.direction + primaryRay.origin, intersectionNormal, inShadow, inShadowHit);
+
+		if (inShadow)
 		{
 			intersection = true;
 			color = vec3(0.0, 1.0, 1.0);
-			if(inShadowHit)
+			if (inShadowHit)
 				color = vec3(0.0, 0.5, 0.5);
 		}
 	}
-	if(!intersection && reflectedMaterial.reflectivity > 0){
-		primaryRay = ray(distance * primaryRay.direction + primaryRay.origin, primaryRay.direction - 2 * dot(primaryRay.direction, normal) * normal, 1.0, 1.0);
-		distance = maxDistance;
-		intersectWithScene(primaryRay, distance, normal, reflectedMaterial);
-		
-		screen_space_ray_origin = vec2(debugTransformationMatrix * vec4(primaryRay.origin, 1.0));
 
-		screen_space_intersection = vec2(debugTransformationMatrix * vec4((distance * primaryRay.direction + primaryRay.origin), 1.0));
-		
-		if(intersectWithVector(pixelDirection, screen_space_ray_origin, screen_space_intersection)){
+	if (!intersection && reflectedMaterial.reflectivity > 0) {
+		primaryRay = ray(distance * primaryRay.direction + primaryRay.origin, primaryRay.direction - 2 * dot(primaryRay.direction, intersectionNormal) * intersectionNormal, 1.0, 1.0);
+		distance = maxDistance;
+		intersectWithScene(primaryRay, distance, intersectionNormal, reflectedMaterial);
+
+		screenSpaceRayOrigin = vec2(debugTransformationMatrix * vec4(primaryRay.origin, 1.0));
+
+		screenSpaceIntersection = vec2(debugTransformationMatrix * vec4((distance * primaryRay.direction + primaryRay.origin), 1.0));
+
+		if (intersectWithVector(pixelDirection, screenSpaceRayOrigin, screenSpaceIntersection)) {
 			intersection = true;
 			color = vec3(0.5, 0.5, 0.0);
 		}
@@ -601,18 +615,18 @@ void intersectDebugRay(ray primaryRay, vec2 pixelDirection, out bool intersectio
 	}
 }
 
-vec3 renderDebugPrimitives(vec2 pixelDirection){
+//Renders the primitives to the debug.
+vec3 renderDebugPrimitives(vec2 pixelDirection) {
 	vec3 color = vec3(0, 0, 0);
 
-	for(int i = 0; i < NUM_SPHERES; i++){
+	for (int i = 0; i < NUM_SPHERES; i++) {
 		vec3 location = vec3(debugTransformationMatrix * vec4(spheres[i].location, 1.0));
-		
 		float distanceToEdge = dot(vec3(pixelDirection, 0) - location, vec3(pixelDirection, 0) - location) - spheres[i].radius;
-		
-		if (abs(distanceToEdge) < 0.1)
+
+		if (abs(distanceToEdge) < 0.01)
 			color = spheres[i].material.color;
 	}
-	
+
 	return color;
 };
 
@@ -624,31 +638,30 @@ vec4 getRayColor(ray ray)
 {
 	vec3 color = intersectWithSceneIterator(ray);
 
-	return vec4(color.x, color.y, color.z, 1.0);
+	return vec4(color, 1.0);
 };
 
-//when the shader program works, try to remove the vec2 to ivec2 conversion.
-void main(){
+void main() {
 	vec4 pixelLocation = gl_FragCoord;
 	vec2 pixelPosition = vec2(pixelLocation.x / windowSize.x, pixelLocation.y / windowSize.y);
 
-	if(!renderDebug){
+	if (!renderDebug) {
 		vec3 direction = normalize(dBotLeft + pixelPosition.x * dRight + pixelPosition.y * dUp);
 		outputColor = getRayColor(ray(camLocation, direction, 1.0, 1.0));
 	}
-	else{
+	else {
 		bool inRay;
 		vec3 color;
-		
+
 		vec2 pixelDirection = vec2((pixelPosition.y - 0.2) * 10, (pixelPosition.x - 0.5) * 10);
-		
+
 		vec3 direction = normalize(dBotLeft + dRight / 2 + dUp / 2);
-				
+
 		intersectDebugRay(ray(camLocation, direction, 1.0, 1.0), pixelDirection, inRay, color);
-		
-		if(!inRay)
+
+		if (!inRay)
 			color = renderDebugPrimitives(pixelDirection), 1.0;
-			
+
 		outputColor = vec4(color, 1.0);
 	}
 };
