@@ -236,7 +236,6 @@ vec3 intersectShadowRays(const vec3 origin, const vec3 surfaceNormal){
 				updateIntensity(shadowRay, distanceToLight);
 				shadowRay.intensity *= angle;
 				
-				updateIntensity(shadowRay, distanceToLight);
 				calculatedColor += lights[i].color * shadowRay.intensity;
 			}
 		}

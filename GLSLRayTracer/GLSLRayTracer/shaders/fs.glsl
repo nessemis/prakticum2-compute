@@ -67,6 +67,7 @@ struct spotlight{
 struct material{
 	vec3 color;
 	float diffuse;
+	float specularHardness;
 	float reflectivity;
 
 	//amount the refraction matters to the total ray definition.
@@ -104,29 +105,29 @@ struct triangle{
 
 #define NUM_SPHERES 3
 const sphere spheres[3] = {
-	{ vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 0.0, 1.0, 1.0 ,0) },
-	{ vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 0.0, 1.0, 1.1 ,0) },
-	{ vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 1.0 ,0) }
+	{ vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 1.0, 0.0, 1.0, 1.0 ,0) },
+	{ vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 1.0, 0.0, 1.0, 1.5 ,0) },
+	{ vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 1.5, 0.0, 0.0, 1.0 ,0) }
 };
 
 #define NUM_PLANES 1
 const plane planes[1] = {
-	{ vec3(0, 0, -1), 1.0, material(vec3(1, 0, 1), 1.0, 0, 0.0, 1.0, 1) },
+	{ vec3(0, 0, -1), 1.0, material(vec3(1, 0, 1), 1.0, 1.0, 0, 0.0, 1.0, 1) },
 };
 
 #define NUM_TRIANGLES 0
 const triangle triangles[1] = {
-	{ vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 0.0 ,0) }
+	{ vec3(2, -1, 0), vec3(0, 2, 0), vec3(0, 1, 1), material(vec3(1, 1, 0), 1.0, 1.0, 0.0, 0.0, 0.0 ,0) }
 };
 
-#define NUM_LIGHTS 0
+#define NUM_LIGHTS 1
 const light lights[1] = {
-	{ vec3(0, 0, 5), vec3(10000, 4000, 5000) }
+	{ vec3(0, 0, 5), vec3(50, 50, 50) }
 };
 
-#define NUM_SPOTLIGHTS 1
+#define NUM_SPOTLIGHTS 0
 const spotlight spotlights[1] = {
-	{ vec3(3,0,10) ,vec3(10000, 4000, 5000), vec3(0,0,-1), PI / 4 }
+	{ vec3(3,0,10) ,vec3(100, 100, 100), vec3(0,0,-1), PI / 4 }
 };
 
 //-------------------------------------------------------
@@ -361,7 +362,7 @@ bool intersectWithSceneShadowRay(inout ray ray, inout float distance)
 }
 
 //Calculates the shadow rays for any given point. 
-vec3 intersectShadowRays(vec3 origin, vec3 surfaceNormal){
+vec3 intersectShadowRays(vec3 origin, vec3 direction, float specularHardness, vec3 surfaceNormal){
 	vec3 calculatedColor = vec3(0, 0, 0);
 	
 	vec3 originToLight;
@@ -386,10 +387,13 @@ vec3 intersectShadowRays(vec3 origin, vec3 surfaceNormal){
 					
 			if (!intersectWithSceneShadowRay(shadowRay, distanceToLight)){
 				updateIntensity(shadowRay, distanceToLight);
-				shadowRay.intensity *= angle;
+				float diffuseIntensity = shadowRay.intensity * angle;
+
+				vec3 h = normalize(originToLight - direction);
+				float nDotH = dot(surfaceNormal, h);
+				float specularIntensity = shadowRay.intensity * pow(max(nDotH, 0.0), specularHardness);
 				
-				updateIntensity(shadowRay, distanceToLight);
-				calculatedColor += lights[i].color * shadowRay.intensity;
+				calculatedColor += lights[i].color * (diffuseIntensity + specularIntensity);
 			}
 		}
 	}
@@ -414,10 +418,13 @@ vec3 intersectShadowRays(vec3 origin, vec3 surfaceNormal){
 
 				if (!intersectWithSceneShadowRay(shadowRay, distanceToLight)) {
 					updateIntensity(shadowRay, distanceToLight);
-					shadowRay.intensity *= angle;
+					float diffuseIntensity = shadowRay.intensity * angle;
 
-					updateIntensity(shadowRay, distanceToLight);
-					calculatedColor += spotlights[i].color * shadowRay.intensity;
+					vec3 h = normalize(originToLight + direction);
+					float nDotH = dot(surfaceNormal, h);
+					float specularIntensity = shadowRay.intensity * pow(max(nDotH, 0.0), specularHardness);
+
+					calculatedColor += lights[i].color * (diffuseIntensity + specularIntensity);
 				}
 			}
 		}
@@ -473,11 +480,12 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 			intersectionLocation = currentray.origin + currentray.direction * distance;
 			
 			if(reflectedMaterial.diffuse > epsilon){
-				vec3 shadowColor = intersectShadowRays(currentray.origin + currentray.direction * distance, normal);
+				vec3 shadowColor = intersectShadowRays(currentray.origin + currentray.direction * distance, currentray.direction, reflectedMaterial.specularHardness, normal);
 				inputRayColor += reflectedMaterial.diffuse * shadowColor * currentray.intensity * reflectedMaterial.color;
 			};
 			
 			if(reflectedMaterial.reflectivity > epsilon){
+				rayBuffer[leastSignificantRay(rayBuffer)] = ray(intersectionLocation, currentray.direction - 2 * dot(currentray.direction, normal) * normal, currentray.intensity, currentray.r_index);
 			};
 			
 			if(reflectedMaterial.emitance > epsilon)
