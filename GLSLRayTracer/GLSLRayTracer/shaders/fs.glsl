@@ -101,7 +101,7 @@ struct triangle{
 #define NUM_SPHERES 3
 const sphere spheres[3] = {
 	{ vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 0.0, 1.0, 1.0 ,0) },
-	{ vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 0.0, 1.0, 1.5 ,0) },
+	{ vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 0.0, 1.0, 1.1 ,0) },
 	{ vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 0.0, 0.0, 1.0 ,0) }
 };
 
@@ -293,11 +293,11 @@ bool intersectWithSpheresShadow(inout ray ray, inout float distance) {
 //Utility functions.
 //-------------------------------------------------------
 
-float calcReflectionCoefficient(const float n1, const float n2, const float cos_a){
+float calcReflectionCoefficient(const float n1, const float n2, const float cos_i){
 	float R0 = (n1 - n2)/(n1 + n2);
 	R0 *=  R0;
-	float f = (1 - cos_a);
-	return R0 + (1 - R0) * f * f * f * f * f;
+	float f = (1 - cos_i);
+	return R0 + (1.0 - R0) * f * f * f * f * f;
 };
 
 float calcAngleOfRefraction(const float n1, const float n2, const float cos_i){
@@ -474,7 +474,7 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 				//the following code was derived from https://graphics.stanford.edu/courses/cs148-10-summer/docs/2006--degreve--reflection_refraction.pdf
 				float R0 = reflectedMaterial.emitance;
 				
-				float cos_i = dot(-currentray.direction, normal);
+				float cos_i = -dot(currentray.direction, normal);
 									
 				float n2 = 1.0;
 				if (currentray.r_index != reflectedMaterial.r_index)
@@ -491,7 +491,7 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 					else
 						R0 *= calcReflectionCoefficient(currentray.r_index, n2, cos_t);
 																				
-					rayBuffer[leastSignificantRay(rayBuffer)] = ray(intersectionLocation, (currentray.r_index / n2) * (currentray.direction + (cos_i - cos_t) * normal), currentray.intensity * (1 - R0), n2);
+					rayBuffer[leastSignificantRay(rayBuffer)] = ray(intersectionLocation, (currentray.r_index / n2) * (currentray.direction + cos_i * normal) - cos_t * normal, currentray.intensity * (1 - R0), n2);
 					
 					rayBuffer[leastSignificantRay(rayBuffer)] = ray(intersectionLocation,currentray.direction - 2 * dot(currentray.direction, normal) * normal, currentray.intensity * R0, currentray.r_index);						
 				}
