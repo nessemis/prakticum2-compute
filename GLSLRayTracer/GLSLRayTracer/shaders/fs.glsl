@@ -29,6 +29,8 @@ uniform vec3 dUp;
 
 #define maxDistance 10000000000.0
 
+#define recursionCap 10
+
 #define PI 3.141592654
 
 #define RAYS_PER_PIXEL_VERTICAL 1
@@ -109,7 +111,7 @@ const sphere spheres[4] = {
 	{ vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 1.0, 0.0, 1.0, 1.0) },
 	{ vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 1.0, 0.0, 1.0, 1.5) },
 	{ vec3(6, 0, 0), 1.0, material(vec3(1, 1, 0), 1.0, 1.5, 0.0, 0.0, 1.0) },
-	{ vec3(15, 0, 3.0), 16.0, material(vec3(1, 1, 1), 0.0, 1.5, 1.0, 0.0, 1.0) }
+	{ vec3(15, 0, 3.0), 4.0, material(vec3(1, 1, 1), 0.0, 1.5, 1.0, 0.0, 1.0) }
 };
 
 #define NUM_PLANES 1
@@ -139,18 +141,16 @@ const spotlight spotlights[1] = {
 float intersectSphere(const ray ray, const sphere sphere){
 	vec3 rayOriginToSphere = sphere.location - ray.origin;
 	float adjacent = dot(rayOriginToSphere, ray.direction);
-	if(dot(rayOriginToSphere, rayOriginToSphere) - sphere.radius < epsilon && adjacent > 0)
-	{
+	if(dot(rayOriginToSphere, rayOriginToSphere) - sphere.radius * sphere.radius < epsilon && adjacent > 0)
 		return 2 * adjacent;
-	}
 	else
 	{
 		vec3 oppositeToSphereOrigin = rayOriginToSphere - adjacent * ray.direction;
 		float opposite = dot(oppositeToSphereOrigin, oppositeToSphereOrigin);
-		if (opposite > sphere.radius)
+		if (opposite > sphere.radius * sphere.radius)
 			return -1.0;
 		else {
-			adjacent -= sqrt(sphere.radius - opposite);
+			adjacent -= sqrt(sphere.radius * sphere.radius - opposite);
 			return adjacent;
 		};
 	}
@@ -193,9 +193,9 @@ float intersectTriangle(const ray ray, const triangle triangle){
 
 vec3 sphereNormal(const sphere sphere, const ray ray, const float distance){
 	vec3 rayOriginToSphere = sphere.location - ray.origin;
-	vec3 normal = (distance * ray.direction - rayOriginToSphere)/sqrt(sphere.radius);
+	vec3 normal = (distance * ray.direction - rayOriginToSphere)/sphere.radius;
 	float adjacent = dot(rayOriginToSphere, ray.direction);
-	if(dot(rayOriginToSphere, rayOriginToSphere) - sphere.radius < epsilon && adjacent > 0)
+	if(dot(rayOriginToSphere, rayOriginToSphere) - sphere.radius * sphere.radius < epsilon && adjacent > 0)
 		return -normal;
 	else
 		return normal;
@@ -508,7 +508,7 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 		
 	int index = 0;
 					
-	for(int i = 0; i < 20; i++)
+	for(int i = 0; i < recursionCap; i++)
 	{	
 		distance = maxDistance;
 				
@@ -690,7 +690,7 @@ vec3 renderDebugPrimitives(vec2 pixelDirection) {
 
 	for (int i = 0; i < NUM_SPHERES; i++) {
 		vec3 location = vec3(debugTransformationMatrix * vec4(spheres[i].location, 1.0));
-		float distanceToEdge = dot(vec3(pixelDirection, 0) - location, vec3(pixelDirection, 0) - location) - spheres[i].radius;
+		float distanceToEdge = sqrt(dot(vec3(pixelDirection, 0) - location, vec3(pixelDirection, 0) - location)) - spheres[i].radius;
 
 		if (abs(distanceToEdge) < 0.01)
 			color = spheres[i].material.color;

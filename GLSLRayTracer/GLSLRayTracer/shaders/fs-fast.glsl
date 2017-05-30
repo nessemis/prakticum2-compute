@@ -27,6 +27,8 @@ uniform vec3 dUp;
 
 #define maxDistance 10000000000.0
 
+#define recursionCap 10
+
 //-------------------------------------------------------
 //Primitives.
 //-------------------------------------------------------
@@ -65,23 +67,43 @@ struct plane{
 //Scene declarations.
 //-------------------------------------------------------
 
-#define NUM_SPHERES 2
+#define NUM_SPHERES 3
 const sphere spheres[NUM_SPHERES] = {
 	{vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 0.0, 1.0)},
-	{vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 1.0)}
+	{vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 0.0, 1.0)},
+	{vec3(6, 0, 0), 1.0, material(vec3(0, 1, 1), 1.0, 0.0)}
 };
 
-#define NUM_PLANES 3
+#define NUM_PLANES 1
 const plane planes[NUM_PLANES] = {
 	{vec3(0, 0, -1), 1.0, material(vec3(-1, 0, 0), 1.0, 0.0)},
-	{vec3(0, -1, 0), 4.0, material(vec3(0, 1, 0), 1.0, 0.0)},
-	{vec3(0, 1, 0), 4.0, material(vec3(0, 0, 1), 1.0, 0.0)}
 };
 
 #define NUM_LIGHTS 1
 const light lights[NUM_LIGHTS] = {
 	{vec3(0, 0, 2), vec3(1000, 1000, 1000)}
 };
+
+
+/*
+//three diffuse only spheres, very dull....
+#define NUM_SPHERES 3
+const sphere spheres[NUM_SPHERES] = {
+	{ vec3(4, -1.5, 0), 1.0, material(vec3(1, 0, 0), 1.0, 0.0) },
+	{ vec3(4, 1.5, 0), 1.0, material(vec3(0, 1, 0), 1.0, 0.0) },
+	{ vec3(6, 0, 2), 1.0, material(vec3(0, 1, 1), 1.0, 0.0) }
+};
+
+#define NUM_PLANES 0
+const plane planes[1] = {
+	{ vec3(0, 0, -1), 1.0, material(vec3(-1, 0, 0), 1.0, 0.0) },
+};
+
+#define NUM_LIGHTS 1
+const light lights[NUM_LIGHTS] = {
+	{ vec3(0, 0, 2), vec3(1000, 1000, 1000) }
+};
+*/
 
 //-------------------------------------------------------
 //Primitive intersections.
@@ -256,7 +278,7 @@ vec3 intersectWithSceneIterator(ray primaryRay)
 	
 	vec3 intersectionLocation;
 							
-	for(int i = 0; i < 10; i++)
+	for(int i = 0; i < recursionCap; i++)
 	{	
 		distance = maxDistance;
 																
@@ -396,7 +418,7 @@ vec3 renderDebugPrimitives(vec2 pixelDirection){
 
 	for(int i = 0; i < NUM_SPHERES; i++){
 		vec3 location = vec3(debugTransformationMatrix * vec4(spheres[i].location, 1.0));
-		float distanceToEdge = dot(vec3(pixelDirection, 0) - location, vec3(pixelDirection, 0) - location) - spheres[i].radius;
+		float distanceToEdge = sqrt(dot(vec3(pixelDirection, 0) - location, vec3(pixelDirection, 0) - location)) - spheres[i].radius;
 		
 		if (abs(distanceToEdge) < 0.01)
 			color = spheres[i].material.color;

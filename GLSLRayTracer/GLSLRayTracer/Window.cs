@@ -13,6 +13,8 @@ namespace GLSLRayTracer
 {
     class Window : GameWindow
     {
+        const bool FAST_RAY_TRACER = false;
+
         public const int width = 800;
         public const int height = 600;
 
@@ -53,7 +55,10 @@ namespace GLSLRayTracer
             computeHandle = GL.CreateProgram();
 
             LoadShader("../../shaders/vs.glsl", ShaderType.VertexShader, computeHandle, out vertexShader);
-            LoadShader("../../shaders/fs.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
+            if (FAST_RAY_TRACER)
+                LoadShader("../../shaders/fs-fast.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
+            else
+                LoadShader("../../shaders/fs.glsl", ShaderType.FragmentShader, computeHandle, out fragmentShader);
 
             GL.LinkProgram(computeHandle);
             GL.UseProgram(computeHandle);
@@ -115,6 +120,7 @@ namespace GLSLRayTracer
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
             GL.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
 
+            //skydome obtained from www.sky-domes.com.
             Bitmap skydome = new Bitmap("../../assets/skydome.jpg");
             BitmapData data = skydome.LockBits(new Rectangle(0, 0, skydome.Width, skydome.Height), ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
 

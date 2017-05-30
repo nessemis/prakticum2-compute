@@ -56,9 +56,11 @@
     <None Include="OpenTK.dll.config" />
     <None Include="packages.config" />
     <None Include="shaders\fs-fast.glsl" />
-    <None Include="shaders\fs-lsd.glsl" />
     <None Include="shaders\fs.glsl" />
     <None Include="shaders\vs.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="assets\skydome.jpg" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
